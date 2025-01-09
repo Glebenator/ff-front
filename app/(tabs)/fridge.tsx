@@ -6,18 +6,35 @@ import { Ionicons } from '@expo/vector-icons';
 import IngredientCard from '@/components/IngredientCard';
 import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
 
+type FilterType = 'all' | 'expiring-soon' | 'expired';
+
 export default function FridgeScreen() {
-    const [filter, setFilter] = useState<'all' | 'expiring-soon'>('all');
+    const [filter, setFilter] = useState<FilterType>('all');
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const loadIngredients = useCallback(() => {
         try {
             setIsLoading(true);
-            const data = filter === 'all' 
-                ? ingredientDb.getAll()
-                : ingredientDb.getExpiringSoon(5);
-            // console.log('Loaded ingredients:', data);  // Debug log
+            let data: Ingredient[] = [];
+            
+            switch (filter) {
+                case 'all':
+                    data = ingredientDb.getAll();
+                    break;
+                case 'expiring-soon':
+                    data = ingredientDb.getExpiringSoon(5);
+                    break;
+                case 'expired':
+                    // Get all ingredients and filter for expired ones
+                    data = ingredientDb.getAll().filter(ingredient => {
+                        const expiryDate = new Date(ingredient.expiryDate);
+                        const today = new Date();
+                        return expiryDate < today;
+                    });
+                    break;
+            }
+            
             setIngredients(data);
         } catch (error) {
             console.error('Failed to load ingredients:', error);
@@ -36,7 +53,16 @@ export default function FridgeScreen() {
         }, [loadIngredients])
     );
 
-    // Web platform message
+    const getDaysUntilExpiry = (expiryDate: string) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expiry = new Date(expiryDate);
+        expiry.setHours(0, 0, 0, 0);
+        const diffTime = expiry.getTime() - today.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    // Web platform message component
     const WebPlatformMessage = () => (
         <View style={styles.emptyStateContainer}>
             <Ionicons 
@@ -59,22 +85,7 @@ export default function FridgeScreen() {
         </View>
     );
 
-    // If we're on web platform, show the mobile-only message
-    if (Platform.OS === 'web') {
-        return (
-            <View style={styles.container}>
-                <WebPlatformMessage />
-            </View>
-        );
-    }
-
-    const getDaysUntilExpiry = (expiryDate: string) => {
-        const today = new Date();
-        const expiry = new Date(expiryDate);
-        const diffTime = expiry.getTime() - today.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    };
-
+    // Empty state component
     const EmptyState = () => (
         <View style={styles.emptyStateContainer}>
             <Ionicons 
@@ -91,6 +102,7 @@ export default function FridgeScreen() {
         </View>
     );
 
+    // No results state component
     const NoResultsState = () => (
         <View style={styles.emptyStateContainer}>
             <Ionicons 
@@ -99,10 +111,12 @@ export default function FridgeScreen() {
                 color="rgb(99, 207, 139)"
             />
             <Text style={styles.emptyStateTitle}>
-                No expiring items
+                {filter === 'expired' ? 'No expired items' : 'No expiring items'}
             </Text>
             <Text style={styles.emptyStateText}>
-                None of your ingredients are expiring soon. Great job keeping track!
+                {filter === 'expired' 
+                    ? 'You have no expired ingredients. Great job managing your fridge!'
+                    : 'None of your ingredients are expiring soon. Great job keeping track!'}
             </Text>
             <Pressable 
                 style={styles.viewAllButton}
@@ -112,6 +126,15 @@ export default function FridgeScreen() {
             </Pressable>
         </View>
     );
+
+    // If we're on web platform, show the mobile-only message
+    if (Platform.OS === 'web') {
+        return (
+            <View style={styles.container}>
+                <WebPlatformMessage />
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -140,6 +163,17 @@ export default function FridgeScreen() {
                                 Expiring Soon
                             </Text>
                         </Pressable>
+                        <Pressable 
+                            style={[styles.filterButton, filter === 'expired' && styles.activeFilter]}
+                            onPress={() => setFilter('expired')}
+                        >
+                            <Text style={[
+                                styles.filterText,
+                                filter === 'expired' && styles.activeFilterText
+                            ]}>
+                                Expired
+                            </Text>
+                        </Pressable>
                     </View>
                 </View>
             )}
@@ -149,17 +183,20 @@ export default function FridgeScreen() {
                     <Text style={styles.emptyStateText}>Loading...</Text>
                 </View>
             ) : ingredients.length === 0 ? (
-                filter === 'expiring-soon' ? <NoResultsState /> : <EmptyState />
+                filter === 'all' ? <EmptyState /> : <NoResultsState />
             ) : (
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <View style={styles.grid}>
                         {ingredients.map(ingredient => (
                             <IngredientCard
                                 key={ingredient.id}
+                                id={ingredient.id!}
                                 name={ingredient.name}
                                 quantity={ingredient.quantity}
                                 expiryDate={ingredient.expiryDate}
                                 daysUntilExpiry={getDaysUntilExpiry(ingredient.expiryDate)}
+                                category={ingredient.category}
+                                notes={ingredient.notes}
                             />
                         ))}
                     </View>
@@ -206,6 +243,7 @@ const styles = StyleSheet.create({
     },
     activeFilterText: {
         color: 'rgb(36, 32, 28)',
+        fontWeight: '600',
     },
     scrollContent: {
         flexGrow: 1,

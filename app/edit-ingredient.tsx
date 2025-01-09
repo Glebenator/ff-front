@@ -1,13 +1,14 @@
-// app/add-ingredient.tsx
-import { useState, useCallback } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Platform, Pressable } from 'react-native';
-import { Stack, router } from 'expo-router';
+// app/edit-ingredient.tsx
+import { useState, useCallback, useEffect } from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, Platform, Pressable, Alert } from 'react-native';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { ingredientDb } from '@/services/database/ingredientDb';
-import { theme } from '@/styles/theme';
+import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
 
-export default function AddIngredientScreen() {
+export default function EditIngredientScreen() {
+    const { id } = useLocalSearchParams();
+    const [ingredient, setIngredient] = useState<Ingredient | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         quantity: '',
@@ -17,18 +18,41 @@ export default function AddIngredientScreen() {
     });
     const [showDatePicker, setShowDatePicker] = useState(false);
 
-    const handleSubmit = useCallback(async () => {
-        console.log('Submit pressed with data:', formData);
+    // Load ingredient data
+    useEffect(() => {
+        if (!id || Platform.OS === 'web') return;
+        
+        try {
+            const data = ingredientDb.getById(Number(id));
+            if (data) {
+                setIngredient(data);
+                setFormData({
+                    name: data.name,
+                    quantity: data.quantity,
+                    category: data.category || '',
+                    notes: data.notes || '',
+                    expiryDate: new Date(data.expiryDate)
+                });
+            }
+        } catch (error) {
+            console.error('Error loading ingredient:', error);
+            Alert.alert('Error', 'Failed to load ingredient details');
+            router.back();
+        }
+    }, [id]);
+
+    const handleSave = useCallback(async () => {
+        if (!id || !ingredient) return;
         
         // Validate required fields
         if (!formData.name?.trim() || !formData.quantity?.trim()) {
-            alert('Please fill in all required fields');
+            Alert.alert('Error', 'Please fill in all required fields');
             return;
         }
 
         try {
             // Create the ingredient data object
-            const ingredientData = {
+            const updates = {
                 name: formData.name.trim(),
                 quantity: formData.quantity.trim(),
                 expiryDate: formData.expiryDate.toISOString().split('T')[0],
@@ -36,22 +60,39 @@ export default function AddIngredientScreen() {
                 notes: formData.notes?.trim() || null
             };
 
-            console.log('Submitting ingredient data:', ingredientData);
-
-            // Add to database
-            ingredientDb.add(ingredientData);
-
-            // Navigate back - we know it worked if we got here
+            // Update in database
+            await ingredientDb.update(Number(id), updates);
             router.back();
         } catch (error) {
-            console.error('Error in submit:', error);
-            if (Platform.OS === 'web') {
-                alert('Adding ingredients is not supported on web platform');
-            } else {
-                alert('Failed to add ingredient. Please try again.');
-            }
+            console.error('Error in save:', error);
+            Alert.alert('Error', 'Failed to update ingredient');
         }
-    }, [formData]);
+    }, [id, ingredient, formData]);
+
+    const handleDelete = useCallback(() => {
+        if (!id) return;
+
+        Alert.alert(
+            'Delete Ingredient',
+            'Are you sure you want to delete this ingredient?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await ingredientDb.delete(Number(id));
+                            router.back();
+                        } catch (error) {
+                            console.error('Error deleting:', error);
+                            Alert.alert('Error', 'Failed to delete ingredient');
+                        }
+                    }
+                }
+            ]
+        );
+    }, [id]);
 
     const handleDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(false);
@@ -64,14 +105,30 @@ export default function AddIngredientScreen() {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    if (Platform.OS === 'web') {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.text}>Editing is not available on web platform</Text>
+            </View>
+        );
+    }
+
+    if (!ingredient) {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.text}>Loading...</Text>
+            </View>
+        );
+    }
+
     return (
         <>
             <Stack.Screen 
                 options={{
-                    title: 'Add Ingredient',
-                    headerTintColor: theme.colors.text.primary,
+                    title: 'Edit Ingredient',
+                    headerTintColor: 'rgb(247, 233, 233)',
                     headerStyle: {
-                        backgroundColor: theme.colors.background.primary,
+                        backgroundColor: 'rgb(36, 32, 28)',
                     },
                 }}
             />
@@ -84,7 +141,7 @@ export default function AddIngredientScreen() {
                             value={formData.name}
                             onChangeText={(text) => updateField('name', text)}
                             placeholder="Enter ingredient name"
-                            placeholderTextColor={theme.colors.text.secondary}
+                            placeholderTextColor="rgb(180, 180, 180)"
                         />
                     </View>
 
@@ -95,7 +152,7 @@ export default function AddIngredientScreen() {
                             value={formData.quantity}
                             onChangeText={(text) => updateField('quantity', text)}
                             placeholder="Enter quantity (e.g., 500g, 2 pieces)"
-                            placeholderTextColor={theme.colors.text.secondary}
+                            placeholderTextColor="rgb(180, 180, 180)"
                         />
                     </View>
 
@@ -106,7 +163,7 @@ export default function AddIngredientScreen() {
                             value={formData.category}
                             onChangeText={(text) => updateField('category', text)}
                             placeholder="Enter category (optional)"
-                            placeholderTextColor={theme.colors.text.secondary}
+                            placeholderTextColor="rgb(180, 180, 180)"
                         />
                     </View>
 
@@ -130,7 +187,7 @@ export default function AddIngredientScreen() {
                                     <Text style={styles.dateButtonText}>
                                         {formData.expiryDate.toLocaleDateString()}
                                     </Text>
-                                    <Ionicons name="calendar-outline" size={24} color={theme.colors.primary} />
+                                    <Ionicons name="calendar-outline" size={24} color="rgb(99, 207, 139)" />
                                 </Pressable>
 
                                 {showDatePicker && (
@@ -153,19 +210,29 @@ export default function AddIngredientScreen() {
                             value={formData.notes}
                             onChangeText={(text) => updateField('notes', text)}
                             placeholder="Add any additional notes (optional)"
-                            placeholderTextColor={theme.colors.text.secondary}
+                            placeholderTextColor="rgb(180, 180, 180)"
                             multiline
                             numberOfLines={4}
                             textAlignVertical="top"
                         />
                     </View>
 
-                    <Pressable 
-                        style={styles.submitButton}
-                        onPress={handleSubmit}
-                    >
-                        <Text style={styles.submitButtonText}>Add Ingredient</Text>
-                    </Pressable>
+                    <View style={styles.buttonContainer}>
+                        <Pressable 
+                            style={styles.deleteButton}
+                            onPress={handleDelete}
+                        >
+                            <Ionicons name="trash-outline" size={24} color="rgb(247, 233, 233)" />
+                            <Text style={styles.deleteButtonText}>Delete</Text>
+                        </Pressable>
+
+                        <Pressable 
+                            style={styles.saveButton}
+                            onPress={handleSave}
+                        >
+                            <Text style={styles.saveButtonText}>Save Changes</Text>
+                        </Pressable>
+                    </View>
                 </View>
             </ScrollView>
         </>
@@ -175,7 +242,7 @@ export default function AddIngredientScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background.primary,
+        backgroundColor: 'rgb(36, 32, 28)',
     },
     form: {
         padding: 16,
@@ -185,47 +252,71 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     label: {
-        fontSize: theme.fontSize.md,
+        fontSize: 16,
         fontWeight: '600',
-        color: theme.colors.text.primary,
+        color: 'rgb(247, 233, 233)',
     },
     input: {
-        backgroundColor: theme.colors.background.secondary,
-        borderRadius: theme.borderRadius.md,
+        backgroundColor: 'rgb(48, 44, 40)',
+        borderRadius: 8,
         padding: 12,
-        fontSize: theme.fontSize.md,
-        color: theme.colors.text.primary,
+        fontSize: 16,
+        color: 'rgb(247, 233, 233)',
     },
     textArea: {
         minHeight: 100,
     },
     datePickerIOS: {
         height: 120,
-        backgroundColor: theme.colors.background.secondary,
-        borderRadius: theme.borderRadius.md,
+        backgroundColor: 'rgb(48, 44, 40)',
+        borderRadius: 8,
     },
     dateButton: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: theme.colors.background.secondary,
-        borderRadius: theme.borderRadius.md,
+        backgroundColor: 'rgb(48, 44, 40)',
+        borderRadius: 8,
         padding: 12,
     },
     dateButtonText: {
-        fontSize: theme.fontSize.md,
-        color: theme.colors.text.primary,
+        fontSize: 16,
+        color: 'rgb(247, 233, 233)',
     },
-    submitButton: {
-        backgroundColor: theme.colors.primary,
-        borderRadius: theme.borderRadius.md,
-        padding: theme.spacing.md,
+    text: {
+        color: 'rgb(247, 233, 233)',
+        fontSize: 16,
+        textAlign: 'center',
+        padding: 20,
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 16,
+    },
+    saveButton: {
+        flex: 1,
+        backgroundColor: 'rgb(99, 207, 139)',
+        borderRadius: 8,
+        padding: 16,
         alignItems: 'center',
-        marginTop: theme.spacing.md,
     },
-    submitButtonText: {
-        fontSize: theme.fontSize.lg,
+    saveButtonText: {
+        fontSize: 18,
         fontWeight: '600',
-        color: theme.colors.background.primary,
+        color: 'rgb(36, 32, 28)',
+    },
+    deleteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: 'rgb(180, 32, 32)',
+        borderRadius: 8,
+        padding: 16,
+    },
+    deleteButtonText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: 'rgb(247, 233, 233)',
     },
 });

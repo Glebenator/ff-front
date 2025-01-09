@@ -1,34 +1,76 @@
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { theme } from '@/styles/theme';
 
 type IngredientCardProps = {
+    id: number;
     name: string;
     quantity: string;
     expiryDate: string;
     daysUntilExpiry: number;
+    category?: string;
+    notes?: string;
 };
 
-export default function IngredientCard({ name, quantity, expiryDate, daysUntilExpiry }: IngredientCardProps) {
+export default function IngredientCard({ 
+    id, 
+    name, 
+    quantity, 
+    daysUntilExpiry,
+    category,
+    notes 
+}: IngredientCardProps) {
     // Determine color based on expiry days
     const getExpiryColor = () => {
-        if (daysUntilExpiry <= 2) return '#ff4444';  // Red for close to expiry
-        if (daysUntilExpiry <= 5) return '#ffaa33';  // Orange for warning
+        if (daysUntilExpiry <= 0) return theme.colors.status.danger;  // Red for expired/today
+        if (daysUntilExpiry <= 3) return theme.colors.status.warning;  // Orange for very soon
+        if (daysUntilExpiry <= 7) return theme.colors.status.success;  // Green for within a week
         return '#63cf8b';  // Green for safe
+    };
+
+    const handlePress = () => {
+        if (Platform.OS !== 'web') {
+            router.push(`/edit-ingredient?id=${id}`);
+        }
+    };
+
+    const getExpiryText = () => {
+        if (daysUntilExpiry === 0) return 'Expires today';
+        if (daysUntilExpiry === 1) return 'Expires tomorrow';
+        if (daysUntilExpiry < 0) return `Expired ${Math.abs(daysUntilExpiry)} days ago`;
+        return `${daysUntilExpiry} days left`;
     };
 
     return (
         <Pressable 
-            style={styles.card}
-            onPress={() => {/* Handle press */}}
+            style={({ pressed }) => [
+                styles.card,
+                pressed && styles.cardPressed
+            ]}
+            onPress={handlePress}
         >
             <View style={[styles.expiryIndicator, { backgroundColor: getExpiryColor() }]} />
-            <View style={styles.content}>
-                <Text style={styles.name}>{name}</Text>
-                <Text style={styles.quantity}>{quantity}</Text>
-                <View style={styles.expiryContainer}>
-                    <Ionicons name="time-outline" size={16} color="rgb(247, 233, 233)" />
-                    <Text style={styles.expiryDate}>{expiryDate}</Text>
+            
+            <View style={styles.contentContainer}>
+                <View style={styles.headerRow}>
+                    <Text style={styles.name} numberOfLines={1}>{name}</Text>
+                    {Platform.OS !== 'web' && (
+                        <Ionicons 
+                            name="chevron-forward" 
+                            size={20} 
+                            color="rgb(180, 180, 180)" 
+                        />
+                    )}
                 </View>
+
+                <Text style={styles.category}>{category}</Text>
+                <Text style={styles.quantity}>{quantity}</Text>
+                {notes && <Text style={styles.notes} numberOfLines={1}>{notes}</Text>}
+
+                <Text style={[styles.expiryText, { color: getExpiryColor() }]}>
+                    {getExpiryText()}
+                </Text>
             </View>
         </Pressable>
     );
@@ -36,17 +78,20 @@ export default function IngredientCard({ name, quantity, expiryDate, daysUntilEx
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: 'rgb(48, 44, 40)',
-        borderRadius: 15,
+        backgroundColor: theme.colors.background.tertiary,
+        borderRadius: 16,
         margin: 8,
         width: Platform.select({ 
-            web: 'calc(20% - 16px)',  // 5 cards per row on web, accounting for margins
+            web: 'calc(20% - 16px)',  // 5 cards per row on web
             default: 160  // fixed width on mobile
         }),
-        minWidth: 160, // ensures cards don't get too small
-        height: 140,
+        minWidth: 160,
+        height: 150,
         overflow: 'hidden',
         position: 'relative',
+    },
+    cardPressed: {
+        opacity: 0.7,
     },
     expiryIndicator: {
         position: 'absolute',
@@ -55,29 +100,45 @@ const styles = StyleSheet.create({
         width: 4,
         height: '100%',
     },
-    content: {
+    contentContainer: {
         flex: 1,
-        padding: 12,
+        padding: theme.spacing.md,
+        paddingLeft: theme.spacing.md,
+        height: '100%',
+    },
+    headerRow: {
+        flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.spacing.xs,
     },
     name: {
-        color: 'rgb(247, 233, 233)',
-        fontSize: 18,
+        color: theme.colors.text.primary,
+        fontSize: theme.fontSize.lg,
         fontWeight: 'bold',
-        marginBottom: 4,
+        flex: 1,
+    },
+    category: {
+        color: theme.colors.text.tertiary,
+        fontSize: theme.fontSize.sm,
+        marginBottom: 2,
     },
     quantity: {
-        color: 'rgb(180, 180, 180)',
-        fontSize: 16,
+        color: theme.colors.text.secondary,
+        fontSize: theme.fontSize.md,
+        marginBottom: 2,
     },
-    expiryContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 8,
+    notes: {
+        color: theme.colors.text.tertiary,
+        fontSize: theme.fontSize.sm,
+        fontStyle: 'italic',
+        marginBottom: 2,
     },
-    expiryDate: {
-        color: 'rgb(247, 233, 233)',
-        marginLeft: 4,
-        fontSize: 14,
+    expiryText: {
+        fontSize: theme.fontSize.sm,
+        fontWeight: '500',
+        position: 'absolute',
+        bottom: theme.spacing.md,
+        left: theme.spacing.md,
     },
 });
