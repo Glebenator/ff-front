@@ -10,7 +10,11 @@ export default function FridgeScreen() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadIngredients();
+        if (Platform.OS !== 'web') {
+            loadIngredients();
+        } else {
+            setIsLoading(false);
+        }
     }, [filter]);
 
     const loadIngredients = () => {
@@ -22,11 +26,42 @@ export default function FridgeScreen() {
             setIngredients(data);
         } catch (error) {
             console.error('Failed to load ingredients:', error);
-            // You might want to show an error message to the user here
         } finally {
             setIsLoading(false);
         }
     };
+
+    // Web platform message
+    const WebPlatformMessage = () => (
+        <View style={styles.emptyStateContainer}>
+            <Ionicons 
+                name="phone-portrait-outline" 
+                size={64} 
+                color="rgb(99, 207, 139)"
+            />
+            <Text style={styles.emptyStateTitle}>
+                Mobile Only Feature
+            </Text>
+            <Text style={styles.emptyStateText}>
+                The Fridge Friend app is currently available only on mobile devices.
+                Please use our mobile app to access all features.
+            </Text>
+            <View style={styles.bulletPoints}>
+                <Text style={styles.bulletPoint}>• Track your ingredients</Text>
+                <Text style={styles.bulletPoint}>• Get expiry notifications</Text>
+                <Text style={styles.bulletPoint}>• Manage your fridge efficiently</Text>
+            </View>
+        </View>
+    );
+
+    // If we're on web platform, show the mobile-only message
+    if (Platform.OS === 'web') {
+        return (
+            <View style={styles.container}>
+                <WebPlatformMessage />
+            </View>
+        );
+    }
 
     const getDaysUntilExpiry = (expiryDate: string) => {
         const today = new Date();
@@ -220,6 +255,16 @@ const styles = StyleSheet.create({
         color: 'rgb(180, 180, 180)',
         textAlign: 'center',
         marginBottom: 24,
+        maxWidth: 400,
+    },
+    bulletPoints: {
+        alignItems: 'flex-start',
+        marginTop: 16,
+    },
+    bulletPoint: {
+        fontSize: 16,
+        color: 'rgb(180, 180, 180)',
+        marginVertical: 4,
     },
     viewAllButton: {
         paddingVertical: 12,
