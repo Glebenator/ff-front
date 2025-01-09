@@ -1,5 +1,7 @@
+// app/(tabs)/fridge.tsx
 import { View, ScrollView, StyleSheet, Text, Pressable, Platform } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import IngredientCard from '@/components/IngredientCard';
 import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
@@ -9,27 +11,30 @@ export default function FridgeScreen() {
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        if (Platform.OS !== 'web') {
-            loadIngredients();
-        } else {
-            setIsLoading(false);
-        }
-    }, [filter]);
-
-    const loadIngredients = () => {
+    const loadIngredients = useCallback(() => {
         try {
             setIsLoading(true);
             const data = filter === 'all' 
                 ? ingredientDb.getAll()
                 : ingredientDb.getExpiringSoon(5);
+            // console.log('Loaded ingredients:', data);  // Debug log
             setIngredients(data);
         } catch (error) {
             console.error('Failed to load ingredients:', error);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [filter]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (Platform.OS !== 'web') {
+                loadIngredients();
+            } else {
+                setIsLoading(false);
+            }
+        }, [loadIngredients])
+    );
 
     // Web platform message
     const WebPlatformMessage = () => (
@@ -163,10 +168,7 @@ export default function FridgeScreen() {
 
             <Pressable 
                 style={styles.addButton}
-                onPress={() => {
-                    // TODO: Navigate to Add Ingredient screen
-                    console.log('Navigate to add ingredient screen');
-                }}
+                onPress={() => router.push('/add-ingredient')}
             >
                 <Ionicons name="add" size={32} color="rgb(36, 32, 28)" />
             </Pressable>

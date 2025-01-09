@@ -10,6 +10,7 @@ export default function RootLayout() {
       <StatusBar hidden/>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="add-ingredient" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>
