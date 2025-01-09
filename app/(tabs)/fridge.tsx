@@ -1,10 +1,10 @@
-// app/(tabs)/fridge.tsx
 import { View, ScrollView, StyleSheet, Text, Pressable, Platform } from 'react-native';
 import { useState, useCallback } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import IngredientCard from '@/components/IngredientCard';
 import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
+import { theme } from '@/styles/theme';
 
 type FilterType = 'all' | 'expiring-soon' | 'expired';
 
@@ -67,8 +67,8 @@ export default function FridgeScreen() {
         <View style={styles.emptyStateContainer}>
             <Ionicons 
                 name="phone-portrait-outline" 
-                size={64} 
-                color="rgb(99, 207, 139)"
+                size={theme.fontSize.hero} 
+                color={theme.colors.primary}
             />
             <Text style={styles.emptyStateTitle}>
                 Mobile Only Feature
@@ -216,38 +216,38 @@ export default function FridgeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'rgb(36, 32, 28)',
+        backgroundColor: theme.colors.background.primary,
     },
     header: {
-        padding: 16,
+        padding: theme.spacing.md,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: 'rgb(60, 56, 52)',
+        borderBottomColor: theme.colors.border.primary,
     },
     filterContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: 12,
+        gap: theme.spacing.sm,
     },
     filterButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        backgroundColor: 'rgb(48, 44, 40)',
+        paddingVertical: theme.spacing.sm,
+        paddingHorizontal: theme.spacing.md,
+        borderRadius: theme.borderRadius.lg,
+        backgroundColor: theme.colors.background.secondary,
     },
     activeFilter: {
-        backgroundColor: 'rgb(99, 207, 139)',
+        backgroundColor: theme.colors.primary,
     },
     filterText: {
-        color: 'rgb(247, 233, 233)',
-        fontSize: 16,
+        color: theme.colors.text.primary,
+        fontSize: theme.fontSize.md,
     },
     activeFilterText: {
-        color: 'rgb(36, 32, 28)',
+        color: theme.colors.background.primary,
         fontWeight: '600',
     },
     scrollContent: {
         flexGrow: 1,
-        padding: 8,
+        padding: theme.spacing.sm,
     },
     grid: {
         flexDirection: 'row',
@@ -256,16 +256,16 @@ const styles = StyleSheet.create({
         maxWidth: Platform.select({ web: 1200, default: '100%' }),
         alignSelf: 'center',
         width: '100%',
-        paddingHorizontal: Platform.OS === 'web' ? 16 : 8,
+        paddingHorizontal: Platform.OS === 'web' ? theme.spacing.md : theme.spacing.sm,
     },
     addButton: {
         position: 'absolute',
-        right: 20,
-        bottom: 20,
+        right: theme.spacing.xl,
+        bottom: theme.spacing.xl,
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: 'rgb(99, 207, 139)',
+        backgroundColor: theme.colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 4,
@@ -281,40 +281,40 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: theme.spacing.xl,
     },
     emptyStateTitle: {
-        fontSize: 24,
+        fontSize: theme.fontSize.xxl,
         fontWeight: 'bold',
-        color: 'rgb(247, 233, 233)',
-        marginTop: 16,
-        marginBottom: 8,
+        color: theme.colors.text.primary,
+        marginTop: theme.spacing.md,
+        marginBottom: theme.spacing.sm,
     },
     emptyStateText: {
-        fontSize: 16,
-        color: 'rgb(180, 180, 180)',
+        fontSize: theme.fontSize.md,
+        color: theme.colors.text.secondary,
         textAlign: 'center',
-        marginBottom: 24,
+        marginBottom: theme.spacing.xl,
         maxWidth: 400,
     },
     bulletPoints: {
         alignItems: 'flex-start',
-        marginTop: 16,
+        marginTop: theme.spacing.md,
     },
     bulletPoint: {
-        fontSize: 16,
-        color: 'rgb(180, 180, 180)',
-        marginVertical: 4,
+        fontSize: theme.fontSize.md,
+        color: theme.colors.text.secondary,
+        marginVertical: theme.spacing.xs,
     },
     viewAllButton: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        backgroundColor: 'rgb(99, 207, 139)',
-        borderRadius: 25,
+        paddingVertical: theme.spacing.sm,
+        paddingHorizontal: theme.spacing.xl,
+        backgroundColor: theme.colors.primary,
+        borderRadius: theme.borderRadius.lg,
     },
     viewAllButtonText: {
-        color: 'rgb(36, 32, 28)',
-        fontSize: 16,
+        color: theme.colors.background.primary,
+        fontSize: theme.fontSize.md,
         fontWeight: '600',
     },
 });

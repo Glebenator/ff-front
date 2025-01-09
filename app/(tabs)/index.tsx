@@ -3,69 +3,69 @@ import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ingredientDb } from '@/services/database/ingredientDb';
+import { theme } from '@/styles/theme';
 
-const WebLanding = () => (
-  <View style={styles.webContainer}>
-    {/* Hero Section */}
-    <View style={styles.heroSection}>
-      <Ionicons 
-        name="restaurant" 
-        size={64} 
-        color="rgb(99, 207, 139)"
-        style={styles.heroIcon}
-      />
-      <Text style={styles.heroTitle}>Welcome to Fridge Friend</Text>
-      <Text style={styles.heroSubtitle}>
-        Your smart kitchen companion for tracking ingredients and reducing food waste
-      </Text>
-    </View>
-
-    {/* Features Section */}
-    <View style={styles.featuresSection}>
-      <View style={styles.featureCard}>
-        <Ionicons name="time-outline" size={32} color="rgb(99, 207, 139)" />
-        <Text style={styles.featureTitle}>Track Expiry Dates</Text>
-        <Text style={styles.featureText}>
-          Never waste food again with smart expiry date tracking
+const WebLanding = () => {
+  return (
+    <View style={styles.webContainer}>
+      <View style={styles.heroSection}>
+        <Ionicons 
+          name="restaurant" 
+          size={theme.fontSize.hero} 
+          color={theme.colors.primary}
+          style={styles.heroIcon}
+        />
+        <Text style={styles.heroTitle}>Welcome to Fridge Friend</Text>
+        <Text style={styles.heroSubtitle}>
+          Your smart kitchen companion for tracking ingredients and reducing food waste
         </Text>
       </View>
 
-      <View style={styles.featureCard}>
-        <Ionicons name="notifications-outline" size={32} color="rgb(99, 207, 139)" />
-        <Text style={styles.featureTitle}>Get Reminders</Text>
-        <Text style={styles.featureText}>
-          Receive alerts when ingredients are about to expire
-        </Text>
+      <View style={styles.featuresSection}>
+        <View style={styles.featureCard}>
+          <Ionicons name="time-outline" size={theme.fontSize.xxxl} color={theme.colors.primary} />
+          <Text style={styles.featureTitle}>Track Expiry Dates</Text>
+          <Text style={styles.featureText}>
+            Never waste food again with smart expiry date tracking
+          </Text>
+        </View>
+
+        <View style={styles.featureCard}>
+          <Ionicons name="notifications-outline" size={theme.fontSize.xxxl} color={theme.colors.primary} />
+          <Text style={styles.featureTitle}>Get Reminders</Text>
+          <Text style={styles.featureText}>
+            Receive alerts when ingredients are about to expire
+          </Text>
+        </View>
+
+        <View style={styles.featureCard}>
+          <Ionicons name="list-outline" size={theme.fontSize.xxxl} color={theme.colors.primary} />
+          <Text style={styles.featureTitle}>Organize Items</Text>
+          <Text style={styles.featureText}>
+            Keep your ingredients organized by categories
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.featureCard}>
-        <Ionicons name="list-outline" size={32} color="rgb(99, 207, 139)" />
-        <Text style={styles.featureTitle}>Organize Items</Text>
-        <Text style={styles.featureText}>
-          Keep your ingredients organized by categories
+      <View style={styles.downloadSection}>
+        <Text style={styles.downloadTitle}>Get Started Today</Text>
+        <Text style={styles.downloadText}>
+          Download Fridge Friend on your mobile device to start tracking your ingredients
         </Text>
+        <View style={styles.storeButtons}>
+          <Pressable style={styles.storeButton}>
+            <Ionicons name="logo-apple" size={theme.fontSize.xl} color={theme.colors.text.primary} />
+            <Text style={styles.storeButtonText}>App Store</Text>
+          </Pressable>
+          <Pressable style={styles.storeButton}>
+            <Ionicons name="logo-google-playstore" size={theme.fontSize.xl} color={theme.colors.text.primary} />
+            <Text style={styles.storeButtonText}>Play Store</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
-
-    {/* Download Section */}
-    <View style={styles.downloadSection}>
-      <Text style={styles.downloadTitle}>Get Started Today</Text>
-      <Text style={styles.downloadText}>
-        Download Fridge Friend on your mobile device to start tracking your ingredients
-      </Text>
-      <View style={styles.storeButtons}>
-        <Pressable style={styles.storeButton}>
-          <Ionicons name="logo-apple" size={24} color="rgb(247, 233, 233)" />
-          <Text style={styles.storeButtonText}>App Store</Text>
-        </Pressable>
-        <Pressable style={styles.storeButton}>
-          <Ionicons name="logo-google-playstore" size={24} color="rgb(247, 233, 233)" />
-          <Text style={styles.storeButtonText}>Play Store</Text>
-        </Pressable>
-      </View>
-    </View>
-  </View>
-);
+  );
+};
 
 const MobileHome = () => {
   const [expiringCount, setExpiringCount] = useState(0);
@@ -86,10 +86,10 @@ const MobileHome = () => {
         onPress={() => router.push('/add-ingredient')}
       >
         <View style={styles.actionContent}>
-          <Ionicons name="add-circle" size={32} color="rgb(99, 207, 139)" />
+          <Ionicons name="add-circle" size={theme.fontSize.xxxl} color={theme.colors.primary} />
           <Text style={styles.mainActionText}>Add New Item</Text>
         </View>
-        <Ionicons name="chevron-forward" size={24} color="rgb(180, 180, 180)" />
+        <Ionicons name="chevron-forward" size={theme.fontSize.xl} color={theme.colors.text.secondary} />
       </Pressable>
 
       <Pressable 
@@ -118,144 +118,144 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
-    backgroundColor: 'rgb(36, 32, 28)',
-    padding: 40,
+    backgroundColor: theme.colors.background.primary,
+    padding: theme.spacing.xl,
   },
   mobileContainer: {
     flex: 1,
-    backgroundColor: 'rgb(36, 32, 28)',
-    padding: 16,
+    backgroundColor: theme.colors.background.primary,
+    padding: theme.spacing.md,
   },
   heroSection: {
     alignItems: 'center',
-    marginBottom: 60,
+    marginBottom: theme.spacing.xl * 2,
   },
   heroIcon: {
-    marginBottom: 20,
+    marginBottom: theme.spacing.xl,
   },
   heroTitle: {
-    fontSize: 40,
+    fontSize: theme.fontSize.hero,
     fontWeight: 'bold',
-    color: 'rgb(247, 233, 233)',
+    color: theme.colors.text.primary,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   heroSubtitle: {
-    fontSize: 20,
-    color: 'rgb(180, 180, 180)',
+    fontSize: theme.fontSize.xl,
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     maxWidth: 600,
   },
   featuresSection: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 24,
-    marginBottom: 60,
+    gap: theme.spacing.xl,
+    marginBottom: theme.spacing.xl * 2,
     flexWrap: 'wrap',
   },
   featureCard: {
-    backgroundColor: 'rgb(48, 44, 40)',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.xl,
     alignItems: 'center',
     width: '30%',
     minWidth: 280,
   },
   featureTitle: {
-    fontSize: 24,
+    fontSize: theme.fontSize.xl,
     fontWeight: '600',
-    color: 'rgb(247, 233, 233)',
-    marginTop: 16,
-    marginBottom: 8,
+    color: theme.colors.text.primary,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   featureText: {
-    fontSize: 16,
-    color: 'rgb(180, 180, 180)',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text.secondary,
     textAlign: 'center',
   },
   downloadSection: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: theme.spacing.xl,
   },
   downloadTitle: {
-    fontSize: 32,
+    fontSize: theme.fontSize.xxxl,
     fontWeight: 'bold',
-    color: 'rgb(247, 233, 233)',
-    marginBottom: 16,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
   },
   downloadText: {
-    fontSize: 18,
-    color: 'rgb(180, 180, 180)',
-    marginBottom: 24,
+    fontSize: theme.fontSize.lg,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xl,
     textAlign: 'center',
   },
   storeButtons: {
     flexDirection: 'row',
-    gap: 16,
+    gap: theme.spacing.md,
   },
   storeButton: {
-    backgroundColor: 'rgb(48, 44, 40)',
+    backgroundColor: theme.colors.background.secondary,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 16,
-    borderRadius: 12,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
     minWidth: 160,
     justifyContent: 'center',
   },
   storeButtonText: {
-    color: 'rgb(247, 233, 233)',
-    fontSize: 16,
+    color: theme.colors.text.primary,
+    fontSize: theme.fontSize.md,
     fontWeight: '600',
   },
   mainAction: {
-    backgroundColor: 'rgb(48, 44, 40)',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   actionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: theme.spacing.sm,
   },
   mainActionText: {
-    fontSize: 18,
+    fontSize: theme.fontSize.lg,
     fontWeight: '600',
-    color: 'rgb(247, 233, 233)',
+    color: theme.colors.text.primary,
   },
   statusCard: {
-    backgroundColor: 'rgb(48, 44, 40)',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.xl,
   },
   statusHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   statusTitle: {
-    fontSize: 18,
+    fontSize: theme.fontSize.lg,
     fontWeight: '600',
-    color: 'rgb(247, 233, 233)',
+    color: theme.colors.text.primary,
   },
   statusCount: {
-    fontSize: 24,
+    fontSize: theme.fontSize.xl,
     fontWeight: 'bold',
-    color: 'rgb(99, 207, 139)',
+    color: theme.colors.primary,
   },
   statusSubtext: {
-    fontSize: 16,
-    color: 'rgb(180, 180, 180)',
-    marginBottom: 12,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.sm,
   },
   viewAll: {
-    fontSize: 16,
-    color: 'rgb(99, 207, 139)',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.primary,
     fontWeight: '500',
   },
 });

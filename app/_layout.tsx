@@ -3,12 +3,20 @@
 import { Stack } from "expo-router";
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
+import { useTheme } from '@/styles/theme';
 
 export default function RootLayout() {
+  const theme = useTheme();
   return (
     <>
-      <StatusBar hidden/>
-      <Stack>
+      <StatusBar hidden />
+      <Stack
+        screenOptions={{
+          contentStyle: {
+            backgroundColor: theme.colors.background.primary,
+          },
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="add-ingredient" />
         <Stack.Screen name="+not-found" />

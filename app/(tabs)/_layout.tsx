@@ -1,20 +1,21 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, StyleSheet } from 'react-native';
+import { theme } from '@/styles/theme';
 
 export default function TabLayout() {
     return (
         <Tabs
             screenOptions={{
-                tabBarActiveTintColor: 'rgb(99, 207, 139)',
+                tabBarActiveTintColor: theme.colors.primary,
                 headerStyle: {
-                    backgroundColor: 'rgb(36, 32, 28)',
+                    backgroundColor: theme.colors.background.primary,
                 },
                 headerStatusBarHeight: Platform.select({ ios: 44, android: 0 }),
                 headerShadowVisible: false,
-                headerTintColor: 'rgb(247, 233, 233)',
+                headerTintColor: theme.colors.text.primary,
                 tabBarStyle: {
-                    backgroundColor: 'rgb(36, 32, 28)',
+                    backgroundColor: theme.colors.background.primary,
                     // Position tab bar at top for web, bottom for mobile
                     position: Platform.select({
                         web: 'absolute',
@@ -33,7 +34,7 @@ export default function TabLayout() {
                         web: StyleSheet.hairlineWidth,
                         default: 0,
                     }),
-                    borderColor: 'rgb(247, 233, 233)',
+                    borderColor: theme.colors.text.primary,
                 },
                 // Hide the header on web since we're showing tabs at the top
                 headerShown: Platform.select({
