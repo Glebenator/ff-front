@@ -1,6 +1,6 @@
 import { View, ScrollView, StyleSheet, Text, Pressable, Platform } from 'react-native';
 import { useState, useCallback, useEffect } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import IngredientCard from '@/components/IngredientCard';
 import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
@@ -9,12 +9,35 @@ import { theme } from '@/styles/theme';
 type FilterType = 'all' | 'expiring-soon' | 'expired';
 
 export default function FridgeScreen() {
+    const { initialFilter } = useLocalSearchParams<{ initialFilter?: FilterType }>();
     const [filter, setFilter] = useState<FilterType>('all');
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+
+
+    // Set initial filter if provided
+    useFocusEffect(
+        useCallback(() => {
+            // If no initialFilter is provided in the URL, reset to 'all'
+            // This ensures tab navigation always shows all items
+            if (!initialFilter) {
+                setFilter('all');
+            } 
+            // Only set filter from initialFilter when it's explicitly provided
+            else if (['all', 'expiring-soon', 'expired'].includes(initialFilter)) {
+                setFilter(initialFilter as FilterType);
+            }
+        }, [initialFilter])
+    );
+
 
     const loadIngredients = useCallback(() => {
+        if (Platform.OS === 'web') {
+            setIsLoading(false);
+            return;
+        }
+
         try {
             setIsLoading(true);
             let data: Ingredient[] = [];
@@ -31,6 +54,7 @@ export default function FridgeScreen() {
                     data = ingredientDb.getAll().filter(ingredient => {
                         const expiryDate = new Date(ingredient.expiryDate);
                         const today = new Date();
+                        today.setHours(0, 0, 0, 0);
                         return expiryDate < today;
                     });
                     break;
@@ -46,17 +70,10 @@ export default function FridgeScreen() {
 
     useFocusEffect(
         useCallback(() => {
-            if (Platform.OS !== 'web') {
-                console.log('Loading ingredients on focus...');
-                loadIngredients();
-                const refreshInterval = setInterval(() => {
-                    setRefreshTrigger(prev => prev + 1);
-                }, 1000);
-    
-                return () => clearInterval(refreshInterval);
-            } else {
-                setIsLoading(false);
-            }
+            if (Platform.OS === 'web') return;
+
+            console.log('Screen focused, loading ingredients...');
+            loadIngredients();
         }, [loadIngredients])
     );
 
@@ -64,7 +81,7 @@ export default function FridgeScreen() {
         if (Platform.OS !== 'web') {
             loadIngredients();
         }
-    }, [refreshTrigger, filter]);
+    }, [filter]);
 
     const getDaysUntilExpiry = (expiryDate: string) => {
         const today = new Date();
@@ -72,7 +89,8 @@ export default function FridgeScreen() {
         const expiry = new Date(expiryDate);
         expiry.setHours(0, 0, 0, 0);
         const diffTime = expiry.getTime() - today.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        // Use floor instead of ceil to match SQL
+        return Math.floor(diffTime / (1000 * 60 * 60 * 24));
     };
 
     // Web platform message component
@@ -210,6 +228,12 @@ export default function FridgeScreen() {
                                 daysUntilExpiry={getDaysUntilExpiry(ingredient.expiryDate)}
                                 category={ingredient.category}
                                 notes={ingredient.notes}
+                                onDelete={(deletedId) => {
+                                    // Update the local state to remove the deleted item
+                                    setIngredients(prevIngredients => 
+                                        prevIngredients.filter(ing => ing.id !== deletedId)
+                                    );
+                                }}
                             />
                         ))}
                     </View>

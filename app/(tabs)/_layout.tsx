@@ -66,6 +66,10 @@ export default function TabLayout() {
                             color={color}
                         />
                     ),
+                    href: {
+                        pathname: "/fridge",
+                        params: { initialFilter: 'all' }
+                    }
                 }}
             />
         </Tabs>

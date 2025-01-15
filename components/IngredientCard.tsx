@@ -13,6 +13,7 @@ type IngredientCardProps = {
     daysUntilExpiry: number;
     category?: string;
     notes?: string;
+    onDelete?: (id: number) => void;
 };
 
 export default function IngredientCard({ 
@@ -22,7 +23,8 @@ export default function IngredientCard({
     expiryDate,
     daysUntilExpiry,
     category,
-    notes 
+    notes,
+    onDelete 
 }: IngredientCardProps) {
     const [showModal, setShowModal] = useState(false);
 
@@ -43,36 +45,44 @@ export default function IngredientCard({
         }
     };
 
-    const handleExtendExpiry = async (days: number) => {
+    const handleStateUpdate = async (action: () => Promise<void>) => {
         try {
-            // Start from today's date
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); // Reset time to start of day
-            
-            // Add the specified number of days
-            today.setDate(today.getDate() + days);
-            const newExpiryDate = today.toISOString().split('T')[0];
-            
-            await ingredientDb.update(id, { expiryDate: newExpiryDate });
-            // Just close the modal - the parent's refresh mechanism will handle the update
-            setShowModal(false);
+            await action();
+            // After successful update, trigger parent refresh by simulating a delete and re-add
+            if (onDelete) {
+                onDelete(id);
+            }
         } catch (error) {
-            console.error('Error extending expiry:', error);
-            Alert.alert('Error', 'Failed to update expiry date');
+            console.error('Error updating ingredient:', error);
+            Alert.alert('Error', 'Failed to update ingredient');
         }
-        setShowModal(false);
     };
 
-    const handleRemoveItem = async () => {
-        try {
-            await ingredientDb.delete(id);
-            // Just close the modal - the parent's refresh mechanism will handle the update
-            setShowModal(false);
-        } catch (error) {
-            console.error('Error removing item:', error);
-            Alert.alert('Error', 'Failed to remove item');
-        }
-        setShowModal(false);
+    const handleExtendExpiry = async (days: number) => {
+        await handleStateUpdate(async () => {
+            const newDate = new Date(expiryDate);
+            newDate.setDate(newDate.getDate() + days);
+            await ingredientDb.update(id, {
+                expiryDate: newDate.toISOString().split('T')[0]
+            });
+        });
+    };
+
+    const handleRemoveItem = () => {
+        Alert.alert(
+            'Delete Item',
+            'Are you sure you want to delete this item?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => handleStateUpdate(async () => {
+                        await ingredientDb.delete(id);
+                    })
+                }
+            ]
+        );
     };
 
     const getExpiryText = () => {

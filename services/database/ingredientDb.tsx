@@ -229,20 +229,27 @@ const getNativeDb = () => {
 
         // Get ingredients expiring soon
         getExpiringSoon: (daysThreshold: number = 5) => {
-            // console.log('Getting ingredients expiring within days:', daysThreshold);
+            console.log('Getting ingredients expiring within days:', daysThreshold);
             const db = getDatabase();
             try {
+                // Explicitly handle the date comparison and force dates to start of day
                 const query = `
+                    WITH current_day AS (
+                        SELECT date('now', 'start of day') as today
+                    )
                     SELECT *, 
-                    ROUND((julianday(expiryDate) - julianday('now'))) as daysUntilExpiry
-                    FROM ingredients 
-                    WHERE date(expiryDate) <= date('now', '+' || '${daysThreshold}' || ' days')
-                    AND date(expiryDate) >= date('now')
+                    CAST(
+                        (julianday(date(expiryDate, 'start of day')) - julianday((SELECT today FROM current_day)))
+                        AS INTEGER
+                    ) as daysUntilExpiry
+                    FROM ingredients, current_day
+                    WHERE date(expiryDate, 'start of day') > (SELECT today FROM current_day)
+                    AND date(expiryDate, 'start of day') <= date((SELECT today FROM current_day), '+' || '${daysThreshold}' || ' days')
                     ORDER BY expiryDate ASC
                 `;
                 
                 const results = db.getAllSync(query);
-                // console.log('Retrieved expiring soon ingredients:', results);
+                console.log('Retrieved expiring soon ingredients:', results);
                 return results;
             } catch (error) {
                 console.error('Error getting expiring soon ingredients:', error);

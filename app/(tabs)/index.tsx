@@ -140,38 +140,28 @@ const MobileHome = () => {
 
   return (
     <View style={styles.mobileContainer}>
-      <Pressable 
-        style={styles.mainAction}
-        onPress={() => router.push('/add-ingredient')}
-      >
-        <View style={styles.actionContent}>
-          <Ionicons name="add-circle" size={theme.fontSize.xxxl} color={theme.colors.primary} />
-          <Text style={styles.mainActionText}>Add New Item</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={theme.fontSize.xl} color={theme.colors.text.secondary} />
-      </Pressable>
+      {(status.expiringSoon + status.expired > 0) && (
+        <Pressable 
+          style={styles.statusCard}
+          onPress={() => router.push('/fridge?initialFilter=all')}
+        >
+          <View style={styles.statusHeader}>
+            <Text style={styles.statusTitle}>Items Needing Attention</Text>
+            <Text style={styles.statusCount}>{status.expiringSoon + status.expired}</Text>
+          </View>
+          <Text style={styles.statusSubtext}>{getStatusMessage()}</Text>
+          {status.total > 0 && (
+            <Text style={styles.viewAll}>View all {status.total} items →</Text>
+          )}
+        </Pressable>
+      )}
 
-      <Pressable 
-        style={styles.statusCard}
-        onPress={() => router.push('/fridge')}
-      >
-        <View style={styles.statusHeader}>
-          <Text style={styles.statusTitle}>Items Needing Attention</Text>
-          <Text style={styles.statusCount}>{status.expiringSoon + status.expired}</Text>
-        </View>
-        <Text style={styles.statusSubtext}>{getStatusMessage()}</Text>
-        {status.total > 0 && (
-          <Text style={styles.viewAll}>View all {status.total} items →</Text>
-        )}
-      </Pressable>
-
-      {/* Quick Actions Section */}
       <View style={styles.quickActions}>
         <Text style={styles.quickActionsTitle}>Quick Actions</Text>
         <View style={styles.quickActionsGrid}>
           <Pressable 
             style={styles.quickActionButton}
-            onPress={() => router.push('/fridge?filter=expiring-soon')}
+            onPress={() => router.push('/fridge?initialFilter=expiring-soon')}
           >
             <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
             <Text style={styles.quickActionText}>Expiring Soon</Text>
@@ -179,12 +169,20 @@ const MobileHome = () => {
           
           <Pressable 
             style={styles.quickActionButton}
-            onPress={() => router.push('/fridge?filter=expired')}
+            onPress={() => router.push('/fridge?initialFilter=expired')}
           >
             <Ionicons name="alert-outline" size={24} color={theme.colors.status.error} />
             <Text style={styles.quickActionText}>Expired Items</Text>
           </Pressable>
         </View>
+
+        <Pressable 
+          style={styles.addNewButton}
+          onPress={() => router.push('/add-ingredient')}
+        >
+          <Ionicons name="add-circle-outline" size={24} color={theme.colors.primary} />
+          <Text style={styles.quickActionText}>Add New Item</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -287,25 +285,6 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     fontWeight: '600',
   },
-  mainAction: {
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.xl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-  },
-  actionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  mainActionText: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-  },
   statusCard: {
     backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.md,
@@ -350,6 +329,7 @@ const styles = StyleSheet.create({
   quickActionsGrid: {
     flexDirection: 'row',
     gap: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
   quickActionButton: {
     flex: 1,
@@ -358,6 +338,15 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  addNewButton: {
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
     gap: theme.spacing.sm,
   },
   quickActionText: {
