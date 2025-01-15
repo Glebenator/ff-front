@@ -3,11 +3,13 @@
 export const theme = {
     colors: {
       // Primary colors
-      primary: 'rgb(99, 207, 139)',  // The green color used throughout the app
+      // primary: 'rgb(99, 207, 139)',  // The green color used throughout the app
+      primary: 'rgb(83, 209, 129)',  // The blue color used throughout the app
       
       // Background colors
       background: {
-        primary: 'rgb(36, 32, 28)',   // Main dark background
+        // primary: 'rgb(36, 32, 28)',   // Main dark background
+        primary: 'rgb(30, 30, 30)',   // Main dark background
         secondary: 'rgb(48, 44, 40)',  // Slightly lighter background for cards
         tertiary: 'rgb(42, 38, 36)',   // Used in ingredient cards
       },
