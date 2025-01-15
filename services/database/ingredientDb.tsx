@@ -54,7 +54,7 @@ const getNativeDb = () => {
     };
 
     const initDatabase = () => {
-        console.log('Starting database initialization...');
+        // console.log('Starting database initialization...');
         const db = getDatabase();
 
         try {
@@ -72,11 +72,11 @@ const getNativeDb = () => {
             `;
             
             db.execSync(createTable);
-            console.log('Created or verified table structure');
+            // console.log('Created or verified table structure');
 
             // Verify table structure
             const tableInfo = db.getAllSync('PRAGMA table_info(ingredients)');
-            console.log('Table structure:', tableInfo);
+            // console.log('Table structure:', tableInfo);
         } catch (error) {
             console.error('Database initialization error:', error);
             throw error;
@@ -86,7 +86,7 @@ const getNativeDb = () => {
     return {
         // Add new ingredient
         add: (ingredient: Omit<Ingredient, 'id' | 'dateAdded'>) => {
-            console.log('Starting add operation with ingredient:', ingredient);
+            // console.log('Starting add operation with ingredient:', ingredient);
             const db = getDatabase();
             const now = new Date().toISOString();
             
@@ -104,14 +104,14 @@ const getNativeDb = () => {
                     );
                 `;
                 
-                console.log('Executing query:', query);
+                // console.log('Executing query:', query);
                 
                 // Execute the insert
                 db.execSync(query);
                 
                 // Get the ID of the newly inserted row
                 const inserted = db.getAllSync('SELECT * FROM ingredients ORDER BY id DESC LIMIT 1');
-                console.log('Newly inserted record:', inserted);
+                // console.log('Newly inserted record:', inserted);
                 
                 if (inserted && inserted.length > 0) {
                     return inserted[0].id;
@@ -126,14 +126,14 @@ const getNativeDb = () => {
 
         // Get all ingredients
         getAll: () => {
-            console.log('Getting all ingredients');
+            // console.log('Getting all ingredients');
             const db = getDatabase();
             try {
                 const results = db.getAllSync(`
                     SELECT * FROM ingredients 
                     ORDER BY datetime(expiryDate) ASC
                 `);
-                console.log('Retrieved ingredients:', results);
+                // console.log('Retrieved ingredients:', results);
                 return results;
             } catch (error) {
                 console.error('Error getting ingredients:', error);
@@ -143,7 +143,7 @@ const getNativeDb = () => {
 
         // Get single ingredient by ID
         getById: (id: number) => {
-            console.log('Getting ingredient by ID:', id);
+            // console.log('Getting ingredient by ID:', id);
             const db = getDatabase();
             try {
                 const query = `
@@ -151,7 +151,7 @@ const getNativeDb = () => {
                     WHERE id = '${id}'
                 `;
                 const results = db.getAllSync(query);
-                console.log('Retrieved ingredient:', results[0]);
+                // console.log('Retrieved ingredient:', results[0]);
                 return results[0] || null;
             } catch (error) {
                 console.error('Error getting ingredient by ID:', error);
@@ -229,7 +229,7 @@ const getNativeDb = () => {
 
         // Get ingredients expiring soon
         getExpiringSoon: (daysThreshold: number = 5) => {
-            console.log('Getting ingredients expiring within days:', daysThreshold);
+            // console.log('Getting ingredients expiring within days:', daysThreshold);
             const db = getDatabase();
             try {
                 const query = `
@@ -242,7 +242,7 @@ const getNativeDb = () => {
                 `;
                 
                 const results = db.getAllSync(query);
-                console.log('Retrieved expiring soon ingredients:', results);
+                // console.log('Retrieved expiring soon ingredients:', results);
                 return results;
             } catch (error) {
                 console.error('Error getting expiring soon ingredients:', error);
@@ -252,7 +252,7 @@ const getNativeDb = () => {
 
         // Get all unique categories
         getCategories: () => {
-            console.log('Getting all categories');
+            // console.log('Getting all categories');
             const db = getDatabase();
             try {
                 const query = `
@@ -262,8 +262,8 @@ const getNativeDb = () => {
                     ORDER BY category
                 `;
                 const results = db.getAllSync(query);
-                console.log('Retrieved categories:', results);
-                return results.map(row => row.category);
+                // console.log('Retrieved categories:', results);
+                return results.map((row: { category: string }) => row.category);
             } catch (error) {
                 console.error('Error getting categories:', error);
                 throw error;

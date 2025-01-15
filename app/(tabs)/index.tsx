@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ingredientDb } from '@/services/database/ingredientDb';
 import { theme } from '@/styles/theme';
+
+type ExpiryStatus = {
+  expiringSoon: number;
+  expired: number;
+  total: number;
+};
 
 const WebLanding = () => {
   return (
@@ -68,16 +74,69 @@ const WebLanding = () => {
 };
 
 const MobileHome = () => {
-  const [expiringCount, setExpiringCount] = useState(0);
+  const [status, setStatus] = useState<ExpiryStatus>({
+    expiringSoon: 0,
+    expired: 0,
+    total: 0
+  });
 
-  useEffect(() => {
+  const loadExpiryStatus = useCallback(() => {
+    if (Platform.OS === 'web') return;
+
     try {
+      // Get items expiring soon (within next 3 days)
       const expiringItems = ingredientDb.getExpiringSoon(3);
-      setExpiringCount(expiringItems.length);
+      
+      // Get all items
+      const allItems = ingredientDb.getAll();
+      
+      // Get current date with time set to start of day
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Filter for expired items
+      const expiredItems = allItems.filter(item => {
+        const expiryDate = new Date(item.expiryDate);
+        expiryDate.setHours(0, 0, 0, 0);
+        return expiryDate < today;
+      });
+
+      setStatus({
+        expiringSoon: expiringItems.length,
+        expired: expiredItems.length,
+        total: allItems.length
+      });
     } catch (error) {
-      console.error('Error loading expiring items:', error);
+      console.error('Error loading expiry status:', error);
     }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'web') return;
+
+      console.log('Home screen focused, loading expiry status...');
+      loadExpiryStatus();
+    }, [loadExpiryStatus])
+  );
+
+  const getStatusMessage = () => {
+    const totalAlert = status.expiringSoon + status.expired;
+    
+    if (totalAlert === 0) {
+      return "You're all good! No items need attention.";
+    }
+    
+    const parts = [];
+    if (status.expired > 0) {
+      parts.push(`${status.expired} expired`);
+    }
+    if (status.expiringSoon > 0) {
+      parts.push(`${status.expiringSoon} expiring soon`);
+    }
+    
+    return `${parts.join(' and ')} ${totalAlert === 1 ? 'item needs' : 'items need'} attention`;
+  };
 
   return (
     <View style={styles.mobileContainer}>
@@ -97,16 +156,36 @@ const MobileHome = () => {
         onPress={() => router.push('/fridge')}
       >
         <View style={styles.statusHeader}>
-          <Text style={styles.statusTitle}>Items Expiring Soon</Text>
-          <Text style={styles.statusCount}>{expiringCount}</Text>
+          <Text style={styles.statusTitle}>Items Needing Attention</Text>
+          <Text style={styles.statusCount}>{status.expiringSoon + status.expired}</Text>
         </View>
-        <Text style={styles.statusSubtext}>
-          {expiringCount === 0 
-            ? "You're all good! No items expiring soon." 
-            : `${expiringCount} ${expiringCount === 1 ? 'item needs' : 'items need'} attention`}
-        </Text>
-        <Text style={styles.viewAll}>View all items →</Text>
+        <Text style={styles.statusSubtext}>{getStatusMessage()}</Text>
+        {status.total > 0 && (
+          <Text style={styles.viewAll}>View all {status.total} items →</Text>
+        )}
       </Pressable>
+
+      {/* Quick Actions Section */}
+      <View style={styles.quickActions}>
+        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+        <View style={styles.quickActionsGrid}>
+          <Pressable 
+            style={styles.quickActionButton}
+            onPress={() => router.push('/fridge?filter=expiring-soon')}
+          >
+            <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
+            <Text style={styles.quickActionText}>Expiring Soon</Text>
+          </Pressable>
+          
+          <Pressable 
+            style={styles.quickActionButton}
+            onPress={() => router.push('/fridge?filter=expired')}
+          >
+            <Ionicons name="alert-outline" size={24} color={theme.colors.status.error} />
+            <Text style={styles.quickActionText}>Expired Items</Text>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 };
@@ -231,6 +310,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
   },
   statusHeader: {
     flexDirection: 'row',
@@ -257,5 +337,32 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.primary,
     fontWeight: '500',
+  },
+  quickActions: {
+    marginTop: theme.spacing.md,
+  },
+  quickActionsTitle: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  quickActionButton: {
+    flex: 1,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  quickActionText: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text.primary,
+    textAlign: 'center',
   },
 });

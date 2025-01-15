@@ -5,6 +5,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
+import { theme } from '@/styles/theme';
 
 export default function EditIngredientScreen() {
     const { id } = useLocalSearchParams();
@@ -14,7 +15,8 @@ export default function EditIngredientScreen() {
         quantity: '',
         category: '',
         notes: '',
-        expiryDate: new Date()
+        expiryDate: new Date(),
+        debugDate: '' // Added for debug purposes
     });
     const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -26,12 +28,14 @@ export default function EditIngredientScreen() {
             const data = ingredientDb.getById(Number(id));
             if (data) {
                 setIngredient(data);
+                const expDate = new Date(data.expiryDate);
                 setFormData({
                     name: data.name,
                     quantity: data.quantity,
                     category: data.category || '',
                     notes: data.notes || '',
-                    expiryDate: new Date(data.expiryDate)
+                    expiryDate: expDate,
+                    debugDate: data.expiryDate // Store the raw date string
                 });
             }
         } catch (error) {
@@ -51,11 +55,16 @@ export default function EditIngredientScreen() {
         }
 
         try {
+            // Use debug date if in dev mode and it's set
+            const finalExpiryDate = __DEV__ && formData.debugDate 
+                ? formData.debugDate 
+                : formData.expiryDate.toISOString().split('T')[0];
+
             // Create the ingredient data object
             const updates = {
                 name: formData.name.trim(),
                 quantity: formData.quantity.trim(),
-                expiryDate: formData.expiryDate.toISOString().split('T')[0],
+                expiryDate: finalExpiryDate,
                 category: formData.category?.trim() || null,
                 notes: formData.notes?.trim() || null
             };
@@ -97,8 +106,21 @@ export default function EditIngredientScreen() {
     const handleDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(false);
         if (selectedDate) {
-            setFormData(prev => ({ ...prev, expiryDate: selectedDate }));
+            setFormData(prev => ({ 
+                ...prev, 
+                expiryDate: selectedDate,
+                debugDate: selectedDate.toISOString().split('T')[0]
+            }));
         }
+    };
+
+    const handleDebugDateChange = (text: string) => {
+        setFormData(prev => ({
+            ...prev,
+            debugDate: text,
+            // Only update the date object if the input is a valid date
+            expiryDate: isNaN(Date.parse(text)) ? prev.expiryDate : new Date(text)
+        }));
     };
 
     const updateField = (field: string, value: string | Date) => {
@@ -126,9 +148,9 @@ export default function EditIngredientScreen() {
             <Stack.Screen 
                 options={{
                     title: 'Edit Ingredient',
-                    headerTintColor: 'rgb(247, 233, 233)',
+                    headerTintColor: theme.colors.text.primary,
                     headerStyle: {
-                        backgroundColor: 'rgb(36, 32, 28)',
+                        backgroundColor: theme.colors.background.primary,
                     },
                 }}
             />
@@ -141,7 +163,7 @@ export default function EditIngredientScreen() {
                             value={formData.name}
                             onChangeText={(text) => updateField('name', text)}
                             placeholder="Enter ingredient name"
-                            placeholderTextColor="rgb(180, 180, 180)"
+                            placeholderTextColor={theme.colors.text.secondary}
                         />
                     </View>
 
@@ -152,7 +174,7 @@ export default function EditIngredientScreen() {
                             value={formData.quantity}
                             onChangeText={(text) => updateField('quantity', text)}
                             placeholder="Enter quantity (e.g., 500g, 2 pieces)"
-                            placeholderTextColor="rgb(180, 180, 180)"
+                            placeholderTextColor={theme.colors.text.secondary}
                         />
                     </View>
 
@@ -163,9 +185,23 @@ export default function EditIngredientScreen() {
                             value={formData.category}
                             onChangeText={(text) => updateField('category', text)}
                             placeholder="Enter category (optional)"
-                            placeholderTextColor="rgb(180, 180, 180)"
+                            placeholderTextColor={theme.colors.text.secondary}
                         />
                     </View>
+
+                    {/* Debug date input - only visible in development */}
+                    {__DEV__ && (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Debug: Manual Date (YYYY-MM-DD) *</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={formData.debugDate}
+                                onChangeText={handleDebugDateChange}
+                                placeholder="YYYY-MM-DD"
+                                placeholderTextColor={theme.colors.text.secondary}
+                            />
+                        </View>
+                    )}
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Expiry Date *</Text>
@@ -175,7 +211,6 @@ export default function EditIngredientScreen() {
                                 mode="date"
                                 display="spinner"
                                 onChange={handleDateChange}
-                                minimumDate={new Date()}
                                 style={styles.datePickerIOS}
                             />
                         ) : (
@@ -187,7 +222,7 @@ export default function EditIngredientScreen() {
                                     <Text style={styles.dateButtonText}>
                                         {formData.expiryDate.toLocaleDateString()}
                                     </Text>
-                                    <Ionicons name="calendar-outline" size={24} color="rgb(99, 207, 139)" />
+                                    <Ionicons name="calendar-outline" size={24} color={theme.colors.primary} />
                                 </Pressable>
 
                                 {showDatePicker && (
@@ -196,7 +231,6 @@ export default function EditIngredientScreen() {
                                         mode="date"
                                         display="default"
                                         onChange={handleDateChange}
-                                        minimumDate={new Date()}
                                     />
                                 )}
                             </>
@@ -210,7 +244,7 @@ export default function EditIngredientScreen() {
                             value={formData.notes}
                             onChangeText={(text) => updateField('notes', text)}
                             placeholder="Add any additional notes (optional)"
-                            placeholderTextColor="rgb(180, 180, 180)"
+                            placeholderTextColor={theme.colors.text.secondary}
                             multiline
                             numberOfLines={4}
                             textAlignVertical="top"
@@ -222,7 +256,7 @@ export default function EditIngredientScreen() {
                             style={styles.deleteButton}
                             onPress={handleDelete}
                         >
-                            <Ionicons name="trash-outline" size={24} color="rgb(247, 233, 233)" />
+                            <Ionicons name="trash-outline" size={24} color="white" />
                             <Text style={styles.deleteButtonText}>Delete</Text>
                         </Pressable>
 
@@ -242,81 +276,81 @@ export default function EditIngredientScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'rgb(36, 32, 28)',
+        backgroundColor: theme.colors.background.primary,
     },
     form: {
-        padding: 16,
-        gap: 16,
+        padding: theme.spacing.md,
+        gap: theme.spacing.md,
     },
     inputGroup: {
-        gap: 8,
+        gap: theme.spacing.sm,
     },
     label: {
-        fontSize: 16,
+        fontSize: theme.fontSize.md,
         fontWeight: '600',
-        color: 'rgb(247, 233, 233)',
+        color: theme.colors.text.primary,
     },
     input: {
-        backgroundColor: 'rgb(48, 44, 40)',
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 16,
-        color: 'rgb(247, 233, 233)',
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
+        fontSize: theme.fontSize.md,
+        color: theme.colors.text.primary,
     },
     textArea: {
         minHeight: 100,
     },
     datePickerIOS: {
         height: 120,
-        backgroundColor: 'rgb(48, 44, 40)',
-        borderRadius: 8,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.borderRadius.md,
     },
     dateButton: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: 'rgb(48, 44, 40)',
-        borderRadius: 8,
-        padding: 12,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
     },
     dateButtonText: {
-        fontSize: 16,
-        color: 'rgb(247, 233, 233)',
+        fontSize: theme.fontSize.md,
+        color: theme.colors.text.primary,
     },
     text: {
-        color: 'rgb(247, 233, 233)',
-        fontSize: 16,
+        color: theme.colors.text.primary,
+        fontSize: theme.fontSize.md,
         textAlign: 'center',
-        padding: 20,
+        padding: theme.spacing.xl,
     },
     buttonContainer: {
         flexDirection: 'row',
-        gap: 12,
-        marginTop: 16,
+        gap: theme.spacing.sm,
+        marginTop: theme.spacing.md,
     },
     saveButton: {
         flex: 1,
-        backgroundColor: 'rgb(99, 207, 139)',
-        borderRadius: 8,
-        padding: 16,
+        backgroundColor: theme.colors.primary,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
         alignItems: 'center',
     },
     saveButtonText: {
-        fontSize: 18,
+        fontSize: theme.fontSize.lg,
         fontWeight: '600',
-        color: 'rgb(36, 32, 28)',
+        color: theme.colors.background.primary,
     },
     deleteButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        backgroundColor: 'rgb(180, 32, 32)',
-        borderRadius: 8,
-        padding: 16,
+        gap: theme.spacing.sm,
+        backgroundColor: theme.colors.status.error,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
     },
     deleteButtonText: {
-        fontSize: 18,
+        fontSize: theme.fontSize.lg,
         fontWeight: '600',
-        color: 'rgb(247, 233, 233)',
+        color: 'white',
     },
 });

@@ -1,5 +1,5 @@
 import { View, ScrollView, StyleSheet, Text, Pressable, Platform } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import IngredientCard from '@/components/IngredientCard';
@@ -12,6 +12,7 @@ export default function FridgeScreen() {
     const [filter, setFilter] = useState<FilterType>('all');
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const loadIngredients = useCallback(() => {
         try {
@@ -46,12 +47,24 @@ export default function FridgeScreen() {
     useFocusEffect(
         useCallback(() => {
             if (Platform.OS !== 'web') {
+                console.log('Loading ingredients on focus...');
                 loadIngredients();
+                const refreshInterval = setInterval(() => {
+                    setRefreshTrigger(prev => prev + 1);
+                }, 1000);
+    
+                return () => clearInterval(refreshInterval);
             } else {
                 setIsLoading(false);
             }
         }, [loadIngredients])
     );
+
+    useEffect(() => {
+        if (Platform.OS !== 'web') {
+            loadIngredients();
+        }
+    }, [refreshTrigger, filter]);
 
     const getDaysUntilExpiry = (expiryDate: string) => {
         const today = new Date();
