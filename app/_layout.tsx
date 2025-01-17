@@ -18,7 +18,7 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="add-ingredient" />
+        <Stack.Screen name="ingredient" options={{ headerShown: true }} />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>

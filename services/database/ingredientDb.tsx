@@ -104,14 +104,14 @@ const getNativeDb = () => {
                     );
                 `;
                 
-                // console.log('Executing query:', query);
+                console.log('Executing query:', query);
                 
                 // Execute the insert
                 db.execSync(query);
                 
                 // Get the ID of the newly inserted row
                 const inserted = db.getAllSync('SELECT * FROM ingredients ORDER BY id DESC LIMIT 1');
-                // console.log('Newly inserted record:', inserted);
+                console.log('Newly inserted record:', inserted);
                 
                 if (inserted && inserted.length > 0) {
                     return inserted[0].id;
@@ -161,7 +161,7 @@ const getNativeDb = () => {
 
         // Update ingredient
         update: (id: number, updates: Partial<Omit<Ingredient, 'id' | 'dateAdded'>>) => {
-            console.log('Updating ingredient:', { id, updates });
+            // console.log('Updating ingredient:', { id, updates });
             const db = getDatabase();
             
             try {
@@ -214,7 +214,7 @@ const getNativeDb = () => {
 
         // Delete ingredient
         delete: (id: number) => {
-            console.log('Deleting ingredient:', id);
+            // console.log('Deleting ingredient:', id);
             const db = getDatabase();
             try {
                 const query = `DELETE FROM ingredients WHERE id = '${id}'`;
@@ -229,27 +229,20 @@ const getNativeDb = () => {
 
         // Get ingredients expiring soon
         getExpiringSoon: (daysThreshold: number = 5) => {
-            console.log('Getting ingredients expiring within days:', daysThreshold);
+            // console.log('Getting ingredients expiring within days:', daysThreshold);
             const db = getDatabase();
             try {
-                // Explicitly handle the date comparison and force dates to start of day
                 const query = `
-                    WITH current_day AS (
-                        SELECT date('now', 'start of day') as today
-                    )
                     SELECT *, 
-                    CAST(
-                        (julianday(date(expiryDate, 'start of day')) - julianday((SELECT today FROM current_day)))
-                        AS INTEGER
-                    ) as daysUntilExpiry
-                    FROM ingredients, current_day
-                    WHERE date(expiryDate, 'start of day') > (SELECT today FROM current_day)
-                    AND date(expiryDate, 'start of day') <= date((SELECT today FROM current_day), '+' || '${daysThreshold}' || ' days')
+                    ROUND((julianday(expiryDate) - julianday('now'))) as daysUntilExpiry
+                    FROM ingredients 
+                    WHERE date(expiryDate) <= date('now', '+' || '${daysThreshold}' || ' days')
+                    AND date(expiryDate) >= date('now')
                     ORDER BY expiryDate ASC
                 `;
                 
                 const results = db.getAllSync(query);
-                console.log('Retrieved expiring soon ingredients:', results);
+                // console.log('Retrieved expiring soon ingredients:', results);
                 return results;
             } catch (error) {
                 console.error('Error getting expiring soon ingredients:', error);
@@ -269,8 +262,8 @@ const getNativeDb = () => {
                     ORDER BY category
                 `;
                 const results = db.getAllSync(query);
-                // console.log('Retrieved categories:', results);
-                return results.map((row: { category: string }) => row.category);
+                console.log('Retrieved categories:', results);
+                return results.map(row => row.category);
             } catch (error) {
                 console.error('Error getting categories:', error);
                 throw error;

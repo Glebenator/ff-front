@@ -1,10 +1,12 @@
 import { View, ScrollView, StyleSheet, Text, Pressable, Platform } from 'react-native';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import IngredientCard from '@/components/IngredientCard';
 import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
+import { WebFridge } from '@/components/WebFridge';
 import { theme } from '@/styles/theme';
+import { sharedStyles } from '@/styles/sharedStyles';
 
 type FilterType = 'all' | 'expiring-soon' | 'expired';
 
@@ -14,23 +16,16 @@ export default function FridgeScreen() {
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-
-
     // Set initial filter if provided
     useFocusEffect(
         useCallback(() => {
-            // If no initialFilter is provided in the URL, reset to 'all'
-            // This ensures tab navigation always shows all items
             if (!initialFilter) {
                 setFilter('all');
-            } 
-            // Only set filter from initialFilter when it's explicitly provided
-            else if (['all', 'expiring-soon', 'expired'].includes(initialFilter)) {
+            } else if (['all', 'expiring-soon', 'expired'].includes(initialFilter)) {
                 setFilter(initialFilter as FilterType);
             }
         }, [initialFilter])
     );
-
 
     const loadIngredients = useCallback(() => {
         if (Platform.OS === 'web') {
@@ -50,7 +45,6 @@ export default function FridgeScreen() {
                     data = ingredientDb.getExpiringSoon(5);
                     break;
                 case 'expired':
-                    // Get all ingredients and filter for expired ones
                     data = ingredientDb.getAll().filter(ingredient => {
                         const expiryDate = new Date(ingredient.expiryDate);
                         const today = new Date();
@@ -71,17 +65,9 @@ export default function FridgeScreen() {
     useFocusEffect(
         useCallback(() => {
             if (Platform.OS === 'web') return;
-
-            console.log('Screen focused, loading ingredients...');
             loadIngredients();
         }, [loadIngredients])
     );
-
-    useEffect(() => {
-        if (Platform.OS !== 'web') {
-            loadIngredients();
-        }
-    }, [filter]);
 
     const getDaysUntilExpiry = (expiryDate: string) => {
         const today = new Date();
@@ -89,62 +75,41 @@ export default function FridgeScreen() {
         const expiry = new Date(expiryDate);
         expiry.setHours(0, 0, 0, 0);
         const diffTime = expiry.getTime() - today.getTime();
-        // Use floor instead of ceil to match SQL
         return Math.floor(diffTime / (1000 * 60 * 60 * 24));
     };
 
-    // Web platform message component
-    const WebPlatformMessage = () => (
-        <View style={styles.emptyStateContainer}>
-            <Ionicons 
-                name="phone-portrait-outline" 
-                size={theme.fontSize.hero} 
-                color={theme.colors.primary}
-            />
-            <Text style={styles.emptyStateTitle}>
-                Mobile Only Feature
-            </Text>
-            <Text style={styles.emptyStateText}>
-                The Fridge Friend app is currently available only on mobile devices.
-                Please use our mobile app to access all features.
-            </Text>
-            <View style={styles.bulletPoints}>
-                <Text style={styles.bulletPoint}>• Track your ingredients</Text>
-                <Text style={styles.bulletPoint}>• Get expiry notifications</Text>
-                <Text style={styles.bulletPoint}>• Manage your fridge efficiently</Text>
-            </View>
-        </View>
-    );
+    // If we're on web platform, show the mobile-only message
+    if (Platform.OS === 'web') {
+        return <WebFridge />;
+    }
 
-    // Empty state component
     const EmptyState = () => (
-        <View style={styles.emptyStateContainer}>
+        <View style={sharedStyles.emptyState}>
             <Ionicons 
                 name="nutrition-outline" 
                 size={64} 
-                color="rgb(99, 207, 139)"
+                color={theme.colors.primary}
             />
-            <Text style={styles.emptyStateTitle}>
+            <Text style={sharedStyles.emptyStateTitle}>
                 Your fridge is empty!
             </Text>
-            <Text style={styles.emptyStateText}>
+            <Text style={sharedStyles.emptyStateText}>
                 Start by adding your first ingredient using the + button below
             </Text>
         </View>
     );
 
-    // No results state component
-    const NoResultsState = () => (
-        <View style={styles.emptyStateContainer}>
+    const NoResults = () => (
+        <View style={sharedStyles.emptyState}>
             <Ionicons 
                 name="search-outline" 
                 size={64} 
-                color="rgb(99, 207, 139)"
+                color={theme.colors.primary}
             />
-            <Text style={styles.emptyStateTitle}>
+            <Text style={sharedStyles.emptyStateTitle}>
                 {filter === 'expired' ? 'No expired items' : 'No expiring items'}
             </Text>
-            <Text style={styles.emptyStateText}>
+            <Text style={sharedStyles.emptyStateText}>
                 {filter === 'expired' 
                     ? 'You have no expired ingredients. Great job managing your fridge!'
                     : 'None of your ingredients are expiring soon. Great job keeping track!'}
@@ -158,49 +123,49 @@ export default function FridgeScreen() {
         </View>
     );
 
-    // If we're on web platform, show the mobile-only message
-    if (Platform.OS === 'web') {
-        return (
-            <View style={styles.container}>
-                <WebPlatformMessage />
-            </View>
-        );
-    }
-
     return (
-        <View style={styles.container}>
+        <View style={sharedStyles.container}>
             {ingredients.length > 0 && (
                 <View style={styles.header}>
-                    <View style={styles.filterContainer}>
+                    <View style={sharedStyles.filterContainer}>
                         <Pressable 
-                            style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
+                            style={[
+                                sharedStyles.filterButton,
+                                filter === 'all' && sharedStyles.filterButtonActive
+                            ]}
                             onPress={() => setFilter('all')}
                         >
                             <Text style={[
-                                styles.filterText,
-                                filter === 'all' && styles.activeFilterText
+                                sharedStyles.filterButtonText,
+                                filter === 'all' && sharedStyles.filterButtonTextActive
                             ]}>
                                 All Items
                             </Text>
                         </Pressable>
                         <Pressable 
-                            style={[styles.filterButton, filter === 'expiring-soon' && styles.activeFilter]}
+                            style={[
+                                sharedStyles.filterButton,
+                                filter === 'expiring-soon' && sharedStyles.filterButtonActive
+                            ]}
                             onPress={() => setFilter('expiring-soon')}
                         >
                             <Text style={[
-                                styles.filterText,
-                                filter === 'expiring-soon' && styles.activeFilterText
+                                sharedStyles.filterButtonText,
+                                filter === 'expiring-soon' && sharedStyles.filterButtonTextActive
                             ]}>
                                 Expiring Soon
                             </Text>
                         </Pressable>
                         <Pressable 
-                            style={[styles.filterButton, filter === 'expired' && styles.activeFilter]}
+                            style={[
+                                sharedStyles.filterButton,
+                                filter === 'expired' && sharedStyles.filterButtonActive
+                            ]}
                             onPress={() => setFilter('expired')}
                         >
                             <Text style={[
-                                styles.filterText,
-                                filter === 'expired' && styles.activeFilterText
+                                sharedStyles.filterButtonText,
+                                filter === 'expired' && sharedStyles.filterButtonTextActive
                             ]}>
                                 Expired
                             </Text>
@@ -210,14 +175,14 @@ export default function FridgeScreen() {
             )}
 
             {isLoading ? (
-                <View style={styles.emptyStateContainer}>
-                    <Text style={styles.emptyStateText}>Loading...</Text>
+                <View style={sharedStyles.emptyState}>
+                    <Text style={sharedStyles.emptyStateText}>Loading...</Text>
                 </View>
             ) : ingredients.length === 0 ? (
-                filter === 'all' ? <EmptyState /> : <NoResultsState />
+                filter === 'all' ? <EmptyState /> : <NoResults />
             ) : (
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <View style={styles.grid}>
+                <ScrollView>
+                    <View style={sharedStyles.grid}>
                         {ingredients.map(ingredient => (
                             <IngredientCard
                                 key={ingredient.id}
@@ -229,7 +194,6 @@ export default function FridgeScreen() {
                                 category={ingredient.category}
                                 notes={ingredient.notes}
                                 onDelete={(deletedId) => {
-                                    // Update the local state to remove the deleted item
                                     setIngredients(prevIngredients => 
                                         prevIngredients.filter(ing => ing.id !== deletedId)
                                     );
@@ -241,113 +205,27 @@ export default function FridgeScreen() {
             )}
 
             <Pressable 
-                style={styles.addButton}
-                onPress={() => router.push('/add-ingredient')}
+                style={sharedStyles.fab}
+                onPress={() => router.push('/ingredient')}
             >
-                <Ionicons name="add" size={32} color="rgb(36, 32, 28)" />
+                <Ionicons name="add" size={32} color={theme.colors.background.primary} />
             </Pressable>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background.primary,
-    },
     header: {
         padding: theme.spacing.md,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: theme.colors.border.primary,
-    },
-    filterContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: theme.spacing.sm,
-    },
-    filterButton: {
-        paddingVertical: theme.spacing.sm,
-        paddingHorizontal: theme.spacing.md,
-        borderRadius: theme.borderRadius.lg,
-        backgroundColor: theme.colors.background.secondary,
-    },
-    activeFilter: {
-        backgroundColor: theme.colors.primary,
-    },
-    filterText: {
-        color: theme.colors.text.primary,
-        fontSize: theme.fontSize.md,
-    },
-    activeFilterText: {
-        color: theme.colors.background.primary,
-        fontWeight: '600',
-    },
-    scrollContent: {
-        flexGrow: 1,
-        padding: theme.spacing.sm,
-    },
-    grid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-start',
-        maxWidth: Platform.select({ web: 1200, default: '100%' }),
-        alignSelf: 'center',
-        width: '100%',
-        paddingHorizontal: Platform.OS === 'web' ? theme.spacing.md : theme.spacing.sm,
-    },
-    addButton: {
-        position: 'absolute',
-        right: theme.spacing.xl,
-        bottom: theme.spacing.xl,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: theme.colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-    },
-    emptyStateContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: theme.spacing.xl,
-    },
-    emptyStateTitle: {
-        fontSize: theme.fontSize.xxl,
-        fontWeight: 'bold',
-        color: theme.colors.text.primary,
-        marginTop: theme.spacing.md,
-        marginBottom: theme.spacing.sm,
-    },
-    emptyStateText: {
-        fontSize: theme.fontSize.md,
-        color: theme.colors.text.secondary,
-        textAlign: 'center',
-        marginBottom: theme.spacing.xl,
-        maxWidth: 400,
-    },
-    bulletPoints: {
-        alignItems: 'flex-start',
-        marginTop: theme.spacing.md,
-    },
-    bulletPoint: {
-        fontSize: theme.fontSize.md,
-        color: theme.colors.text.secondary,
-        marginVertical: theme.spacing.xs,
     },
     viewAllButton: {
         paddingVertical: theme.spacing.sm,
         paddingHorizontal: theme.spacing.xl,
         backgroundColor: theme.colors.primary,
         borderRadius: theme.borderRadius.lg,
+        marginTop: theme.spacing.md,
     },
     viewAllButtonText: {
         color: theme.colors.background.primary,

@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { theme } from '@/styles/theme';
+import { sharedStyles } from '@/styles/sharedStyles';
 import { ingredientDb } from '@/services/database/ingredientDb';
 
 type IngredientCardProps = {
@@ -41,14 +42,13 @@ export default function IngredientCard({
         if (daysUntilExpiry < 0) {
             setShowModal(true);
         } else {
-            router.push(`/edit-ingredient?id=${id}`);
+            router.push(`/ingredient?id=${id}`)
         }
     };
 
     const handleStateUpdate = async (action: () => Promise<void>) => {
         try {
             await action();
-            // After successful update, trigger parent refresh by simulating a delete and re-add
             if (onDelete) {
                 onDelete(id);
             }
@@ -96,23 +96,24 @@ export default function IngredientCard({
         <>
             <Pressable 
                 style={({ pressed }) => [
-                    styles.card,
-                    pressed && styles.cardPressed
+                    sharedStyles.ingredientCard,
+                    pressed && sharedStyles.cardPressed
                 ]}
                 onPress={handlePress}
             >
                 <View style={[styles.expiryIndicator, { backgroundColor: getExpiryColor() }]} />
                 
-                <View style={styles.contentContainer}>
-                    <View style={styles.headerRow}>
-                        <Text style={styles.name} numberOfLines={1}>{name}</Text>
-                        <View style={styles.headerIcons}>
+                <View style={sharedStyles.cardContentContainer}>
+                    <View style={sharedStyles.spaceBetween}>
+                        <Text style={[sharedStyles.cardTitle, styles.name]} numberOfLines={1}>
+                            {name}
+                        </Text>
+                        <View style={sharedStyles.iconRow}>
                             {notes && (
                                 <Ionicons 
                                     name="document-text-outline" 
                                     size={16} 
                                     color={theme.colors.text.tertiary}
-                                    style={styles.noteIcon}
                                 />
                             )}
                             {Platform.OS !== 'web' && (
@@ -128,40 +129,35 @@ export default function IngredientCard({
                     <View style={styles.detailsContainer}>
                         <View style={styles.categorySpace}>
                             {category && (
-                                <View style={styles.textWithIcon}>
+                                <View style={sharedStyles.detailsRow}>
                                     <Ionicons 
                                         name="pricetag-outline" 
                                         size={14} 
                                         color={theme.colors.text.tertiary}
-                                        style={styles.detailIcon}
                                     />
                                     <Text style={styles.category}>{category}</Text>
                                 </View>
                             )}
                         </View>
-                        <View style={styles.textWithIcon}>
+                        <View style={sharedStyles.detailsRow}>
                             <Ionicons 
                                 name="cube-outline" 
                                 size={14} 
                                 color={theme.colors.text.secondary}
-                                style={styles.detailIcon}
                             />
                             <Text style={styles.quantity}>{quantity}</Text>
                         </View>
                     </View>
 
-                    <View style={styles.expiryContainer}>
-                        <View style={styles.textWithIcon}>
-                            <Ionicons 
-                                name="time-outline" 
-                                size={14} 
-                                color={getExpiryColor()}
-                                style={styles.detailIcon}
-                            />
-                            <Text style={[styles.expiryText, { color: getExpiryColor() }]}>
-                                {getExpiryText()}
-                            </Text>
-                        </View>
+                    <View style={sharedStyles.detailsRow}>
+                        <Ionicons 
+                            name="time-outline" 
+                            size={14} 
+                            color={getExpiryColor()}
+                        />
+                        <Text style={[styles.expiryText, { color: getExpiryColor() }]}>
+                            {getExpiryText()}
+                        </Text>
                     </View>
                 </View>
             </Pressable>
@@ -173,16 +169,18 @@ export default function IngredientCard({
                 onRequestClose={() => setShowModal(false)}
             >
                 <Pressable 
-                    style={styles.modalOverlay}
+                    style={sharedStyles.modalOverlay}
                     onPress={() => setShowModal(false)}
                 >
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Expired Item</Text>
-                        <Text style={styles.modalSubtitle}>{name}</Text>
+                    <View style={sharedStyles.modalContent}>
+                        <Text style={sharedStyles.modalTitle}>Expired Item</Text>
+                        <Text style={sharedStyles.modalSubtitle}>{name}</Text>
                         
-                        <View style={styles.modalButtons}>
-                            <Text style={styles.modalSectionTitle}>Extend expiry by:</Text>
-                            <View style={styles.extendButtons}>
+                        <View style={sharedStyles.modalActions}>
+                            <Text style={[sharedStyles.bodyText, styles.modalSectionTitle]}>
+                                Extend expiry by:
+                            </Text>
+                            <View style={styles.extendButtonsRow}>
                                 {[1, 2, 3].map((days) => (
                                     <Pressable
                                         key={days}
@@ -197,11 +195,11 @@ export default function IngredientCard({
                             </View>
                             
                             <Pressable 
-                                style={styles.removeButton}
+                                style={styles.dangerButton}
                                 onPress={handleRemoveItem}
                             >
                                 <Ionicons name="trash-outline" size={20} color="white" />
-                                <Text style={styles.removeButtonText}>Remove Item</Text>
+                                <Text style={styles.buttonText}>Remove Item</Text>
                             </Pressable>
                             
                             <Pressable 
@@ -219,22 +217,6 @@ export default function IngredientCard({
 }
 
 const styles = StyleSheet.create({
-    card: {
-        backgroundColor: theme.colors.background.tertiary,
-        borderRadius: 16,
-        margin: 8,
-        width: Platform.select({ 
-            web: 'calc(20% - 16px)',
-            default: 160
-        }),
-        minWidth: 160,
-        height: 150,
-        overflow: 'hidden',
-        position: 'relative',
-    },
-    cardPressed: {
-        opacity: 0.7,
-    },
     expiryIndicator: {
         position: 'absolute',
         top: 0,
@@ -242,31 +224,7 @@ const styles = StyleSheet.create({
         width: 4,
         height: '100%',
     },
-    contentContainer: {
-        flex: 1,
-        padding: theme.spacing.md,
-        paddingLeft: theme.spacing.lg,
-        height: '100%',
-        justifyContent: 'space-between',
-    },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: theme.spacing.xs,
-        height: 28,
-    },
-    headerIcons: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    noteIcon: {
-        marginRight: theme.spacing.xs,
-    },
     name: {
-        color: theme.colors.text.primary,
-        fontSize: theme.fontSize.lg,
-        fontWeight: 'bold',
         flex: 1,
         marginRight: theme.spacing.xs,
     },
@@ -278,13 +236,6 @@ const styles = StyleSheet.create({
         height: 24,
         justifyContent: 'center',
     },
-    textWithIcon: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    detailIcon: {
-        marginRight: 4,
-    },
     category: {
         color: theme.colors.text.tertiary,
         fontSize: theme.fontSize.sm,
@@ -293,52 +244,18 @@ const styles = StyleSheet.create({
         color: theme.colors.text.secondary,
         fontSize: theme.fontSize.md,
     },
-    expiryContainer: {
-        height: 24,
-        justifyContent: 'center',
-    },
     expiryText: {
         fontSize: theme.fontSize.sm,
         fontWeight: '500',
     },
-    // Modal styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: theme.colors.background.primary,
-        borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing.xl,
-        width: '90%',
-        maxWidth: 400,
-    },
-    modalTitle: {
-        fontSize: theme.fontSize.xl,
-        fontWeight: 'bold',
-        color: theme.colors.text.primary,
-        marginBottom: theme.spacing.xs,
-    },
-    modalSubtitle: {
-        fontSize: theme.fontSize.md,
-        color: theme.colors.text.secondary,
-        marginBottom: theme.spacing.xl,
-    },
-    modalButtons: {
-        gap: theme.spacing.md,
-    },
     modalSectionTitle: {
-        fontSize: theme.fontSize.md,
         fontWeight: '500',
-        color: theme.colors.text.primary,
-        marginBottom: theme.spacing.xs,
+        marginBottom: theme.spacing.md,
     },
-    extendButtons: {
+    extendButtonsRow: {
         flexDirection: 'row',
         gap: theme.spacing.sm,
-        marginBottom: theme.spacing.md,
+        marginBottom: theme.spacing.lg,
     },
     extendButton: {
         flex: 1,
@@ -346,13 +263,14 @@ const styles = StyleSheet.create({
         padding: theme.spacing.md,
         borderRadius: theme.borderRadius.md,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     extendButtonText: {
         color: theme.colors.background.primary,
         fontSize: theme.fontSize.md,
         fontWeight: '600',
     },
-    removeButton: {
+    dangerButton: {
         backgroundColor: theme.colors.status.error,
         padding: theme.spacing.md,
         borderRadius: theme.borderRadius.md,
@@ -360,16 +278,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: theme.spacing.sm,
-    },
-    removeButtonText: {
-        color: 'white',
-        fontSize: theme.fontSize.md,
-        fontWeight: '600',
+        marginBottom: theme.spacing.md,
     },
     cancelButton: {
         padding: theme.spacing.md,
         borderRadius: theme.borderRadius.md,
         alignItems: 'center',
+        justifyContent: 'center',
+    },
+    buttonText: {
+        color: 'white',
+        fontSize: theme.fontSize.md,
+        fontWeight: '600',
     },
     cancelButtonText: {
         color: theme.colors.text.secondary,
