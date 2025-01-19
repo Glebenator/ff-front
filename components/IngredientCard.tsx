@@ -15,6 +15,7 @@ type IngredientCardProps = {
     category?: string;
     notes?: string;
     onDelete?: (id: number) => void;
+    onUpdate?: () => void;  // New callback for updates
 };
 
 export default function IngredientCard({ 
@@ -25,7 +26,8 @@ export default function IngredientCard({
     daysUntilExpiry,
     category,
     notes,
-    onDelete 
+    onDelete,
+    onUpdate 
 }: IngredientCardProps) {
     const [showModal, setShowModal] = useState(false);
 
@@ -49,8 +51,8 @@ export default function IngredientCard({
     const handleStateUpdate = async (action: () => Promise<void>) => {
         try {
             await action();
-            if (onDelete) {
-                onDelete(id);
+            if (onUpdate) {
+                onUpdate(); // Trigger parent refresh
             }
         } catch (error) {
             console.error('Error updating ingredient:', error);
@@ -60,11 +62,19 @@ export default function IngredientCard({
 
     const handleExtendExpiry = async (days: number) => {
         await handleStateUpdate(async () => {
-            const newDate = new Date(expiryDate);
+            // Start from today's date
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset time to start of day
+            const newDate = new Date(today);
             newDate.setDate(newDate.getDate() + days);
+            
+            // Update the expiry date
             await ingredientDb.update(id, {
                 expiryDate: newDate.toISOString().split('T')[0]
             });
+            
+            // Close the modal after successful update
+            setShowModal(false);
         });
     };
 
@@ -79,6 +89,10 @@ export default function IngredientCard({
                     style: 'destructive',
                     onPress: () => handleStateUpdate(async () => {
                         await ingredientDb.delete(id);
+                        if (onDelete) {
+                            onDelete(id);
+                        }
+                        setShowModal(false);
                     })
                 }
             ]

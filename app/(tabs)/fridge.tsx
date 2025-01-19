@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import IngredientCard from '@/components/IngredientCard';
+import SearchBar from '@/components/SearchBar';
 import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
 import { WebFridge } from '@/components/WebFridge';
 import { theme } from '@/styles/theme';
@@ -14,6 +15,7 @@ export default function FridgeScreen() {
     const { initialFilter } = useLocalSearchParams<{ initialFilter?: FilterType }>();
     const [filter, setFilter] = useState<FilterType>('all');
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
     // Set initial filter if provided
@@ -78,6 +80,19 @@ export default function FridgeScreen() {
         return Math.floor(diffTime / (1000 * 60 * 60 * 24));
     };
 
+    const filteredIngredients = useCallback(() => {
+        const normalizedSearch = searchTerm.toLowerCase().trim();
+        
+        return ingredients.filter(ingredient => {
+            const matchesSearch = normalizedSearch === '' || 
+                ingredient.name.toLowerCase().includes(normalizedSearch) ||
+                ingredient.category?.toLowerCase().includes(normalizedSearch) ||
+                ingredient.notes?.toLowerCase().includes(normalizedSearch);
+                
+            return matchesSearch;
+        });
+    }, [ingredients, searchTerm]);
+
     // If we're on web platform, show the mobile-only message
     if (Platform.OS === 'web') {
         return <WebFridge />;
@@ -123,55 +138,84 @@ export default function FridgeScreen() {
         </View>
     );
 
+    const NoSearchResults = () => (
+        <View style={sharedStyles.emptyState}>
+            <Ionicons 
+                name="search-outline" 
+                size={64} 
+                color={theme.colors.primary}
+            />
+            <Text style={sharedStyles.emptyStateTitle}>
+                No matching ingredients
+            </Text>
+            <Text style={sharedStyles.emptyStateText}>
+                Try adjusting your search term
+            </Text>
+            <Pressable 
+                style={styles.viewAllButton}
+                onPress={() => setSearchTerm('')}
+            >
+                <Text style={styles.viewAllButtonText}>Clear search</Text>
+            </Pressable>
+        </View>
+    );
+
     return (
         <View style={sharedStyles.container}>
             {ingredients.length > 0 && (
-                <View style={styles.header}>
-                    <View style={sharedStyles.filterContainer}>
-                        <Pressable 
-                            style={[
-                                sharedStyles.filterButton,
-                                filter === 'all' && sharedStyles.filterButtonActive
-                            ]}
-                            onPress={() => setFilter('all')}
-                        >
-                            <Text style={[
-                                sharedStyles.filterButtonText,
-                                filter === 'all' && sharedStyles.filterButtonTextActive
-                            ]}>
-                                All Items
-                            </Text>
-                        </Pressable>
-                        <Pressable 
-                            style={[
-                                sharedStyles.filterButton,
-                                filter === 'expiring-soon' && sharedStyles.filterButtonActive
-                            ]}
-                            onPress={() => setFilter('expiring-soon')}
-                        >
-                            <Text style={[
-                                sharedStyles.filterButtonText,
-                                filter === 'expiring-soon' && sharedStyles.filterButtonTextActive
-                            ]}>
-                                Expiring Soon
-                            </Text>
-                        </Pressable>
-                        <Pressable 
-                            style={[
-                                sharedStyles.filterButton,
-                                filter === 'expired' && sharedStyles.filterButtonActive
-                            ]}
-                            onPress={() => setFilter('expired')}
-                        >
-                            <Text style={[
-                                sharedStyles.filterButtonText,
-                                filter === 'expired' && sharedStyles.filterButtonTextActive
-                            ]}>
-                                Expired
-                            </Text>
-                        </Pressable>
+                <>
+                    <View style={styles.header}>
+                        <View style={sharedStyles.filterContainer}>
+                            <Pressable 
+                                style={[
+                                    sharedStyles.filterButton,
+                                    filter === 'all' && sharedStyles.filterButtonActive
+                                ]}
+                                onPress={() => setFilter('all')}
+                            >
+                                <Text style={[
+                                    sharedStyles.filterButtonText,
+                                    filter === 'all' && sharedStyles.filterButtonTextActive
+                                ]}>
+                                    All Items
+                                </Text>
+                            </Pressable>
+                            <Pressable 
+                                style={[
+                                    sharedStyles.filterButton,
+                                    filter === 'expiring-soon' && sharedStyles.filterButtonActive
+                                ]}
+                                onPress={() => setFilter('expiring-soon')}
+                            >
+                                <Text style={[
+                                    sharedStyles.filterButtonText,
+                                    filter === 'expiring-soon' && sharedStyles.filterButtonTextActive
+                                ]}>
+                                    Expiring Soon
+                                </Text>
+                            </Pressable>
+                            <Pressable 
+                                style={[
+                                    sharedStyles.filterButton,
+                                    filter === 'expired' && sharedStyles.filterButtonActive
+                                ]}
+                                onPress={() => setFilter('expired')}
+                            >
+                                <Text style={[
+                                    sharedStyles.filterButtonText,
+                                    filter === 'expired' && sharedStyles.filterButtonTextActive
+                                ]}>
+                                    Expired
+                                </Text>
+                            </Pressable>
+                        </View>
                     </View>
-                </View>
+                    <SearchBar
+                        value={searchTerm}
+                        onChangeText={setSearchTerm}
+                        onClear={() => setSearchTerm('')}
+                    />
+                </>
             )}
 
             {isLoading ? (
@@ -180,10 +224,12 @@ export default function FridgeScreen() {
                 </View>
             ) : ingredients.length === 0 ? (
                 filter === 'all' ? <EmptyState /> : <NoResults />
+            ) : filteredIngredients().length === 0 ? (
+                <NoSearchResults />
             ) : (
                 <ScrollView>
                     <View style={sharedStyles.grid}>
-                        {ingredients.map(ingredient => (
+                        {filteredIngredients().map(ingredient => (
                             <IngredientCard
                                 key={ingredient.id}
                                 id={ingredient.id!}
@@ -198,6 +244,7 @@ export default function FridgeScreen() {
                                         prevIngredients.filter(ing => ing.id !== deletedId)
                                     );
                                 }}
+                                onUpdate={loadIngredients}
                             />
                         ))}
                     </View>

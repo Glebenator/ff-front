@@ -64,6 +64,32 @@ export const sharedStyles = StyleSheet.create({
     textAlignVertical: 'top',
   },
 
+  // Search Styles
+  searchContainer: {
+    padding: theme.spacing.md,
+    paddingBottom: 0,
+  },
+  searchInputWrapper: {
+    position: 'relative',
+    marginBottom: theme.spacing.md,
+  },
+  searchInput: {
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    paddingLeft: theme.spacing.xl * 2,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text.primary,
+    height: 44,
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: theme.spacing.lg,
+    top: '50%',
+    transform: [{ translateY: -10 }],
+    zIndex: 1,
+  },
+
   // Date Picker Styles
   datePickerIOS: {
     backgroundColor: theme.colors.background.secondary,
@@ -189,6 +215,30 @@ export const sharedStyles = StyleSheet.create({
     backgroundColor: theme.colors.status.error,
   },
 
+  // Filter Styles
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  filterButton: {
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.background.secondary,
+  },
+  filterButtonActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  filterButtonText: {
+    color: theme.colors.text.primary,
+    fontSize: theme.fontSize.md,
+  },
+  filterButtonTextActive: {
+    color: theme.colors.background.primary,
+    fontWeight: '600',
+  },
+
   // Ingredient Card Specific
   ingredientCard: {
     backgroundColor: theme.colors.background.tertiary,
@@ -255,30 +305,6 @@ export const sharedStyles = StyleSheet.create({
     maxWidth: Platform.select({ web: 1200, default: '100%' }),
     alignSelf: 'center',
     width: '100%',
-  },
-
-  // Filter Styles
-  filterContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-  },
-  filterButton: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.background.secondary,
-  },
-  filterButtonActive: {
-    backgroundColor: theme.colors.primary,
-  },
-  filterButtonText: {
-    color: theme.colors.text.primary,
-    fontSize: theme.fontSize.md,
-  },
-  filterButtonTextActive: {
-    color: theme.colors.background.primary,
-    fontWeight: '600',
   },
 
   // Grid Layouts

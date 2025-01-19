@@ -104,14 +104,14 @@ const getNativeDb = () => {
                     );
                 `;
                 
-                console.log('Executing query:', query);
+                // console.log('Executing query:', query);
                 
                 // Execute the insert
                 db.execSync(query);
                 
                 // Get the ID of the newly inserted row
                 const inserted = db.getAllSync('SELECT * FROM ingredients ORDER BY id DESC LIMIT 1');
-                console.log('Newly inserted record:', inserted);
+                // console.log('Newly inserted record:', inserted);
                 
                 if (inserted && inserted.length > 0) {
                     return inserted[0].id;
@@ -188,7 +188,7 @@ const getNativeDb = () => {
                 }
         
                 if (updateParts.length === 0) {
-                    console.log('No valid updates provided');
+                    // console.log('No valid updates provided');
                     return false;
                 }
         
@@ -198,12 +198,12 @@ const getNativeDb = () => {
                     WHERE id = '${id}'
                 `;
         
-                console.log('Executing update query:', query);
+                // console.log('Executing update query:', query);
                 db.execSync(query);
                 
                 // Get the updated record to verify
                 const results = db.getAllSync(`SELECT * FROM ingredients WHERE id = '${id}'`);
-                console.log('Updated record:', results[0]);
+                // console.log('Updated record:', results[0]);
                 
                 return true;
             } catch (error) {
@@ -262,7 +262,7 @@ const getNativeDb = () => {
                     ORDER BY category
                 `;
                 const results = db.getAllSync(query);
-                console.log('Retrieved categories:', results);
+                // console.log('Retrieved categories:', results);
                 return results.map(row => row.category);
             } catch (error) {
                 console.error('Error getting categories:', error);
