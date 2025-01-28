@@ -1,12 +1,23 @@
 // Root layout: The app/_layout.tsx file. It defines shared UI elements such as headers and tab bars so they are consistent between different routes.
 
 import { Stack } from "expo-router";
+import { Platform } from 'react-native';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
 import { useTheme } from '@/styles/theme';
+import { NotificationService } from '@/services/notifications/notificationService';
 
 export default function RootLayout() {
   const theme = useTheme();
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      setupNotifications();
+    }
+  }, []);
+
+  const setupNotifications = async () => {
+    await NotificationService.requestPermissions();
+  };
   return (
     <>
       <StatusBar hidden />
