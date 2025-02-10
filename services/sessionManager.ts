@@ -2,13 +2,38 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mockMqttService, type FridgeSession } from './mqtt/mockMqttService';
-import { ingredientDb } from './database/ingredientDb';
+import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
+import { toastStore } from '@/services/toastStore';
 
 const SESSIONS_STORAGE_KEY = 'fridge_sessions';
 
+// Extend the FridgeItem interface to include editable fields
+export interface EditableFridgeItem {
+  name: string;
+  direction: 'in' | 'out';
+  confidence: number;
+  quantity: number;
+  expiryDate?: string;
+  category?: string;
+  notes?: string;
+}
+
+export interface EditableSession extends Omit<FridgeSession, 'items'> {
+  items: EditableFridgeItem[];
+}
+
 class SessionManager {
-  private sessions: FridgeSession[] = [];
-  private subscribers: ((sessions: FridgeSession[]) => void)[] = [];
+  private sessions: EditableSession[] = [];
+  private subscribers: ((sessions: EditableSession[]) => void)[] = [];
+  private defaultCategories = [
+    'Dairy',
+    'Meat',
+    'Vegetables',
+    'Fruits',
+    'Beverages',
+    'Condiments',
+    'Other'
+  ];
 
   constructor() {
     this.loadSessions();
@@ -38,7 +63,18 @@ class SessionManager {
   }
 
   private handleNewSession(session: FridgeSession) {
-    this.sessions.unshift(session);
+    // Convert regular session to editable session
+    const editableSession: EditableSession = {
+      ...session,
+      items: session.items.map(item => ({
+        ...item,
+        quantity: item.quantity || 1,
+        category: this.inferCategory(item.name),
+        expiryDate: this.calculateDefaultExpiry(item.name)
+      }))
+    };
+
+    this.sessions.unshift(editableSession);
     this.saveSessions();
     this.notifySubscribers();
   }
@@ -47,45 +83,43 @@ class SessionManager {
     this.subscribers.forEach(callback => callback([...this.sessions]));
   }
 
-  async approveSession(sessionId: string, updatedItems: FridgeSession['items']) {
+  async approveSession(sessionId: string, items: EditableFridgeItem[]) {
     const sessionIndex = this.sessions.findIndex(s => s.sessionId === sessionId);
     if (sessionIndex === -1) return;
 
     // Update session status
     this.sessions[sessionIndex] = {
       ...this.sessions[sessionIndex],
-      items: updatedItems,
+      items,
       status: 'approved'
     };
 
-    // Track changes for summary
     const changes = {
       added: 0,
       removed: 0,
     };
 
-    // Update database based on items
     try {
-      for (const item of updatedItems) {
+      // Process all items
+      for (const item of items) {
         if (item.direction === 'in') {
-          // Add new item to database
+          // Add new item
           await ingredientDb.add({
             name: item.name,
-            quantity: item.quantity?.toString() || '1',
-            expiryDate: this.calculateDefaultExpiry(item.name),
-            category: this.inferCategory(item.name)
+            quantity: item.quantity.toString(),
+            expiryDate: item.expiryDate || this.calculateDefaultExpiry(item.name),
+            category: item.category || this.inferCategory(item.name),
+            notes: item.notes,
           });
           changes.added++;
         } else {
-          // Find items to remove
+          // Handle removal
           const existingItems = await ingredientDb.getAll();
           const matchingItems = existingItems.filter(
             i => i.name.toLowerCase() === item.name.toLowerCase()
           );
 
-          // Remove items based on quantity
-          const quantityToRemove = item.quantity || 1;
-          let remainingToRemove = quantityToRemove;
+          let remainingToRemove = item.quantity;
 
           for (const matchingItem of matchingItems) {
             const currentQuantity = parseInt(matchingItem.quantity) || 1;
@@ -94,30 +128,31 @@ class SessionManager {
               // Remove entire item
               await ingredientDb.delete(matchingItem.id!);
               remainingToRemove -= currentQuantity;
-              changes.removed++;
+              changes.removed += currentQuantity;
             } else {
               // Partially reduce quantity
               const newQuantity = currentQuantity - remainingToRemove;
               await ingredientDb.update(matchingItem.id!, {
                 quantity: newQuantity.toString()
               });
+              changes.removed += remainingToRemove;
               remainingToRemove = 0;
-              changes.removed++;
-              break;
             }
 
             if (remainingToRemove <= 0) break;
           }
+
+          if (remainingToRemove > 0) {
+            toastStore.warning(`Could not remove all requested ${item.name} (insufficient quantity)`);
+          }
         }
       }
 
-      this.saveSessions();
+      await this.saveSessions();
       this.notifySubscribers();
-
-      // Return changes summary
       return changes;
     } catch (error) {
-      console.error('Error updating database:', error);
+      console.error('Error processing session:', error);
       throw error;
     }
   }
@@ -131,11 +166,55 @@ class SessionManager {
       status: 'rejected'
     };
 
-    this.saveSessions();
+    await this.saveSessions();
     this.notifySubscribers();
   }
 
-  subscribe(callback: (sessions: FridgeSession[]) => void) {
+  async clearSessions(status: 'pending' | 'approved' | 'rejected') {
+    this.sessions = this.sessions.filter(session => session.status !== status);
+    await this.saveSessions();
+    this.notifySubscribers();
+  }
+
+  async updateSessionItem(
+    sessionId: string,
+    itemIndex: number,
+    updates: Partial<EditableFridgeItem>
+  ) {
+    const sessionIndex = this.sessions.findIndex(s => s.sessionId === sessionId);
+    if (sessionIndex === -1) return;
+
+    const updatedItems = [...this.sessions[sessionIndex].items];
+    updatedItems[itemIndex] = {
+      ...updatedItems[itemIndex],
+      ...updates
+    };
+
+    this.sessions[sessionIndex] = {
+      ...this.sessions[sessionIndex],
+      items: updatedItems
+    };
+
+    await this.saveSessions();
+    this.notifySubscribers();
+  }
+
+  async removeSessionItem(sessionId: string, itemIndex: number) {
+    const sessionIndex = this.sessions.findIndex(s => s.sessionId === sessionId);
+    if (sessionIndex === -1) return;
+
+    const updatedItems = this.sessions[sessionIndex].items.filter((_, index) => index !== itemIndex);
+
+    this.sessions[sessionIndex] = {
+      ...this.sessions[sessionIndex],
+      items: updatedItems
+    };
+
+    await this.saveSessions();
+    this.notifySubscribers();
+  }
+
+  subscribe(callback: (sessions: EditableSession[]) => void) {
     this.subscribers.push(callback);
     callback([...this.sessions]);
     return () => {
@@ -143,12 +222,11 @@ class SessionManager {
     };
   }
 
-  getPendingSessions() {
-    return this.sessions.filter(session => session.status === 'pending');
+  getAvailableCategories(): string[] {
+    return this.defaultCategories;
   }
 
   private calculateDefaultExpiry(itemName: string): string {
-    // Simple expiry calculation - can be made more sophisticated
     const today = new Date();
     const daysToAdd = this.getDefaultExpiryDays(itemName);
     today.setDate(today.getDate() + daysToAdd);
@@ -163,30 +241,38 @@ class SessionManager {
       yogurt: 14,
       butter: 30,
       chicken: 2,
+      beef: 3,
+      fish: 2,
       carrots: 14,
       apples: 14,
       lettuce: 7,
-      tomatoes: 7
+      tomatoes: 7,
+      bread: 5,
+      juice: 7
     };
 
     return defaultExpiries[itemName.toLowerCase()] || 7;
   }
 
   private inferCategory(itemName: string): string {
-    const categories: { [key: string]: string } = {
-      milk: 'Dairy',
-      eggs: 'Dairy',
-      cheese: 'Dairy',
-      yogurt: 'Dairy',
-      butter: 'Dairy',
-      chicken: 'Meat',
-      carrots: 'Vegetables',
-      apples: 'Fruits',
-      lettuce: 'Vegetables',
-      tomatoes: 'Vegetables'
+    const lowerName = itemName.toLowerCase();
+    
+    const categoryMappings: { [key: string]: string[] } = {
+      Dairy: ['milk', 'cheese', 'yogurt', 'butter', 'cream'],
+      Meat: ['chicken', 'beef', 'pork', 'fish', 'salmon'],
+      Vegetables: ['carrot', 'lettuce', 'tomato', 'cucumber', 'pepper'],
+      Fruits: ['apple', 'banana', 'orange', 'grape', 'berry'],
+      Beverages: ['juice', 'soda', 'water', 'tea', 'coffee'],
+      Condiments: ['ketchup', 'mustard', 'mayo', 'sauce', 'dressing']
     };
 
-    return categories[itemName.toLowerCase()] || 'Other';
+    for (const [category, keywords] of Object.entries(categoryMappings)) {
+      if (keywords.some(keyword => lowerName.includes(keyword))) {
+        return category;
+      }
+    }
+
+    return 'Other';
   }
 }
 

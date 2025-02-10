@@ -1,14 +1,32 @@
 // hooks/useSessions.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { type FridgeSession, type FridgeItem } from '@/services/mqtt/mockMqttService';
 import { sessionManager } from '@/services/sessionManager';
+import { toastStore } from '@/services/toastStore';
 
 export const useSessions = () => {
   const [sessions, setSessions] = useState<FridgeSession[]>([]);
-  const [selectedSession, setSelectedSession] = useState<FridgeSession | null>(null);
+  const [showNotification, setShowNotification] = useState(false);
+  const previousSessionIds = useRef(new Set<string>());
 
   useEffect(() => {
-    const unsubscribe = sessionManager.subscribe(setSessions);
+    const unsubscribe = sessionManager.subscribe((newSessions) => {
+      setSessions(newSessions);
+      
+      // Check for new pending sessions that we haven't seen before
+      const currentSessionIds = new Set(newSessions.map(s => s.sessionId));
+      const hasNewPendingSessions = newSessions.some(session => 
+        session.status === 'pending' && !previousSessionIds.current.has(session.sessionId)
+      );
+
+      if (hasNewPendingSessions) {
+        setShowNotification(true);
+      }
+
+      // Update our reference of known session IDs
+      previousSessionIds.current = currentSessionIds;
+    });
+    
     return unsubscribe;
   }, []);
 
@@ -17,38 +35,41 @@ export const useSessions = () => {
       const changes = await sessionManager.approveSession(sessionId, updatedItems);
       if (changes) {
         let message = [];
-        if (changes.added > 0) message.push(`Added ${changes.added} new items`);
-        if (changes.updated > 0) message.push(`Updated ${changes.updated} existing items`);
-        if (changes.removed > 0) message.push(`Removed ${changes.removed} items`);
+        if (changes.added > 0) message.push(`${changes.added} items added`);
+        if (changes.updated > 0) message.push(`${changes.updated} items updated`);
+        if (changes.removed > 0) message.push(`${changes.removed} items removed`);
         
-        Alert.alert(
-          'Session Approved',
-          message.join('\n'),
-          [{ text: 'OK' }]
-        );
+        toastStore.success(message.join(', '));
       }
-      setSelectedSession(null);
     } catch (error) {
-      Alert.alert('Error', 'Failed to update items');
       console.error('Error approving session:', error);
+      toastStore.error('Failed to update items');
     }
   }, []);
 
   const handleRejectSession = useCallback(async (sessionId: string) => {
-    await sessionManager.rejectSession(sessionId);
-    setSelectedSession(null);
+    try {
+      await sessionManager.rejectSession(sessionId);
+      toastStore.success('Session rejected');
+    } catch (error) {
+      console.error('Error rejecting session:', error);
+      toastStore.error('Failed to reject session');
+    }
+  }, []);
+
+  const dismissNotification = useCallback(() => {
+    setShowNotification(false);
   }, []);
 
   const pendingSessions = sessions.filter(session => session.status === 'pending');
-  const hasPendingSessions = pendingSessions.length > 0;
+  const hasPendingSessions = pendingSessions.length > 0 && showNotification;
 
   return {
     sessions,
     pendingSessions,
     hasPendingSessions,
-    selectedSession,
-    setSelectedSession,
     approveSession: handleApproveSession,
     rejectSession: handleRejectSession,
+    dismissNotification,
   };
 };

@@ -119,7 +119,7 @@ export default function IngredientCard({
                 
                 <View style={sharedStyles.cardContentContainer}>
                     <View style={sharedStyles.spaceBetween}>
-                        <Text style={[sharedStyles.cardTitle, styles.name]} numberOfLines={1}>
+                        <Text style={[sharedStyles.cardTitle, styles.name]} numberOfLines={2}>
                             {name}
                         </Text>
                         <View style={sharedStyles.iconRow}>

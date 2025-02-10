@@ -56,9 +56,9 @@ export default function RecipeScreen() {
   const getDisplayRecipes = () => {
     switch (activeTab) {
       case 'favorites':
-        return favorites;
+        return favorites || [];
       case 'suggested':
-        return recipes;
+        return recipes || [];
       case 'recent':
         return [];
       default:

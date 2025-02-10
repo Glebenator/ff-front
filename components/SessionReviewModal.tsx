@@ -8,11 +8,14 @@ import {
   StyleSheet,
   TextInput,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import { type FridgeSession, type FridgeItem } from '@/services/mqtt/mockMqttService';
+
+const DEFAULT_QUANTITY = 1;
 
 interface SessionReviewModalProps {
   session: FridgeSession;
@@ -31,7 +34,7 @@ export default function SessionReviewModal({
 }: SessionReviewModalProps) {
   const [items, setItems] = useState(session.items.map(item => ({
     ...item,
-    quantity: 1,
+    quantity: DEFAULT_QUANTITY,
     editingName: false,
     editingQuantity: false
   })));
@@ -77,14 +80,14 @@ export default function SessionReviewModal({
     // Remove any temporary UI state before passing to database
     const cleanedItems = items.map(({ editingName, editingQuantity, ...item }) => ({
       ...item,
-      quantity: item.quantity || 1 // Ensure quantity has a value before saving
+      quantity: item.quantity || DEFAULT_QUANTITY // Ensure quantity has a value before saving
     }));
     onApprove(cleanedItems);
     
     Alert.alert(
       'Session Approved',
       `Added ${summary.added} items\nRemoved ${summary.removed} items`,
-      [{ text: 'OK' }]
+      [{ text: 'OK', onPress: onClose }]
     );
   };
 
@@ -102,8 +105,8 @@ export default function SessionReviewModal({
             {new Date(session.timestamp).toLocaleString()}
           </Text>
 
-          {/* Items List */}
-          <View style={styles.itemsList}>
+          {/* Items List wrapped in ScrollView */}
+          <ScrollView style={styles.itemsList} contentContainerStyle={{ paddingBottom: theme.spacing.lg }}>
             {items.map((item, index) => (
               <View key={index} style={styles.itemRow}>
                 {/* Item Name and Confidence */}
@@ -118,6 +121,8 @@ export default function SessionReviewModal({
                       };
                       setItems(newItems);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit name for ${item.name}`}
                   >
                     {item.editingName ? (
                       <TextInput
@@ -133,6 +138,7 @@ export default function SessionReviewModal({
                           setItems(newItems);
                         }}
                         autoFocus
+                        accessibilityLabel="Item name input"
                       />
                     ) : (
                       <Text style={styles.itemName}>
@@ -160,6 +166,8 @@ export default function SessionReviewModal({
                 <Pressable
                   style={styles.directionButton}
                   onPress={() => handleDirectionToggle(index)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Toggle direction for ${item.name} to ${item.direction === 'in' ? 'out' : 'in'}`}
                 >
                   <Ionicons
                     name={item.direction === 'in' ? 'arrow-down' : 'arrow-up'}
@@ -177,7 +185,7 @@ export default function SessionReviewModal({
                     <Text style={styles.quantityLabel}>Qty:</Text>
                     <TextInput
                       style={styles.quantityInput}
-                      value={item.editingQuantity ? (item.quantity?.toString() || '') : (item.quantity?.toString() || '1')}
+                      value={item.editingQuantity ? (item.quantity?.toString() || '') : (item.quantity?.toString() || DEFAULT_QUANTITY.toString())}
                       onChangeText={(text) => handleQuantityChange(index, text)}
                       onFocus={() => {
                         const newItems = [...items];
@@ -192,25 +200,28 @@ export default function SessionReviewModal({
                         newItems[index] = {
                           ...newItems[index],
                           editingQuantity: false,
-                          quantity: newItems[index].quantity || 1 // Only apply default on blur
+                          quantity: newItems[index].quantity || DEFAULT_QUANTITY // Only apply default on blur
                         };
                         setItems(newItems);
                       }}
                       keyboardType="numeric"
                       maxLength={2}
                       selectTextOnFocus={true}
+                      accessibilityLabel={`Quantity input for ${item.name}`}
                     />
                   </View>
                 )}
               </View>
             ))}
-          </View>
+          </ScrollView>
 
           {/* Action Buttons */}
           <View style={styles.actions}>
             <Pressable
               style={[styles.button, styles.approveButton]}
               onPress={handleApprove}
+              accessibilityRole="button"
+              accessibilityLabel="Approve session"
             >
               <Ionicons name="checkmark" size={20} color={theme.colors.background.primary} />
               <Text style={styles.buttonText}>Approve</Text>
@@ -219,6 +230,8 @@ export default function SessionReviewModal({
             <Pressable
               style={[styles.button, styles.rejectButton]}
               onPress={onReject}
+              accessibilityRole="button"
+              accessibilityLabel="Reject session"
             >
               <Ionicons name="close" size={20} color={theme.colors.background.primary} />
               <Text style={styles.buttonText}>Reject</Text>
@@ -228,6 +241,8 @@ export default function SessionReviewModal({
           <Pressable
             style={styles.closeButton}
             onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close modal"
           >
             <Text style={styles.closeButtonText}>Close</Text>
           </Pressable>
@@ -247,7 +262,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   itemsList: {
-    gap: theme.spacing.md,
+    // If desired, you can also add padding here
+    // paddingHorizontal: theme.spacing.md,
   },
   itemRow: {
     flexDirection: 'row',

@@ -1,9 +1,29 @@
+// app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 import { theme } from '@/styles/theme';
+import { useSessions } from '@/hooks/useSessions';
+
+function TabIcon({ name, focused, color }: { 
+  name: React.ComponentProps<typeof Ionicons>['name']; 
+  focused: boolean;
+  color: string;
+}) {
+  return (
+    <Ionicons
+      name={focused ? name.replace('-outline', '') : name}
+      size={24}
+      color={color}
+    />
+  );
+}
 
 export default function TabLayout() {
+    const { pendingSessions } = useSessions();
+    const pendingCount = pendingSessions.length;
+
     return (
         <Tabs
             screenOptions={{
@@ -16,7 +36,6 @@ export default function TabLayout() {
                 headerTintColor: theme.colors.text.primary,
                 tabBarStyle: {
                     backgroundColor: theme.colors.background.primary,
-                    // Position tab bar at top for web, bottom for mobile
                     position: Platform.select({
                         web: 'absolute',
                         default: undefined,
@@ -25,7 +44,6 @@ export default function TabLayout() {
                         web: 0,
                         default: undefined,
                     }),
-                    // Platform-specific border styling
                     borderTopWidth: Platform.select({
                         web: 0,
                         default: StyleSheet.hairlineWidth,
@@ -36,7 +54,6 @@ export default function TabLayout() {
                     }),
                     borderColor: theme.colors.text.primary,
                 },
-                // Hide the header on web since we're showing tabs at the top
                 headerShown: Platform.select({
                     web: true,
                     default: true,
@@ -47,11 +64,7 @@ export default function TabLayout() {
                 options={{
                     title: 'Home',
                     tabBarIcon: ({ color, focused }) => (
-                        <Ionicons
-                            name={focused ? 'home-sharp' : 'home-outline'}
-                            size={30}
-                            color={color}
-                        />
+                        <TabIcon name="home-outline" focused={focused} color={color} />
                     ),
                 }}
             />
@@ -60,11 +73,7 @@ export default function TabLayout() {
                 options={{
                     title: 'My Fridge',
                     tabBarIcon: ({ color, focused }) => (
-                        <Ionicons
-                            name={focused ? 'restaurant' : 'restaurant-outline'}
-                            size={30}
-                            color={color}
-                        />
+                        <TabIcon name="restaurant-outline" focused={focused} color={color} />
                     ),
                     href: {
                         pathname: "/fridge",
@@ -72,19 +81,53 @@ export default function TabLayout() {
                     }
                 }}
             />
-             <Tabs.Screen
+            <Tabs.Screen
+                name="sessions"
+                options={{
+                    title: 'Sessions',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View>
+                            <TabIcon name="scan-outline" focused={focused} color={color} />
+                            {pendingCount > 0 && (
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>
+                                        {pendingCount > 99 ? '99+' : pendingCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    ),
+                }}
+            />
+            <Tabs.Screen
                 name="recipes"
                 options={{
                     title: 'Recipes',
                     tabBarIcon: ({ color, focused }) => (
-                        <Ionicons
-                            name={focused ? 'book' : 'book-outline'}
-                            size={30}
-                            color={color}
-                        />
+                        <TabIcon name="book-outline" focused={focused} color={color} />
                     ),
                 }}
             />
         </Tabs>
     );
 }
+
+const styles = StyleSheet.create({
+    badge: {
+        position: 'absolute',
+        right: -6,
+        top: -4,
+        backgroundColor: theme.colors.status.error,
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+    },
+    badgeText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+});
