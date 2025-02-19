@@ -6,7 +6,7 @@ export interface Ingredient {
     name: string;
     quantity: string;
     expiryDate: string;
-    dateAdded: string;
+    dateAdded: string;  // Keep dateAdded
     category?: string;
     notes?: string;
 }
@@ -83,7 +83,7 @@ const getNativeDb = () => {
                 CREATE INDEX IF NOT EXISTS idx_ingredients_expiry ON ingredients(expiryDate);
                 CREATE INDEX IF NOT EXISTS idx_ingredients_category ON ingredients(category);
             `;
-            
+
             db.execSync(createTable);
         } catch (error) {
             console.error('Database initialization error:', error);
@@ -97,8 +97,8 @@ const getNativeDb = () => {
             SELECT * FROM ingredients 
             WHERE LOWER(TRIM(name)) = '${normalizedName}'
             AND expiryDate = '${ingredient.expiryDate}'
-            ${ingredient.category 
-                ? `AND category = '${escapeString(ingredient.category)}'` 
+            ${ingredient.category
+                ? `AND category = '${escapeString(ingredient.category)}'`
                 : 'AND category IS NULL'}
         `;
         return db.getAllSync(query);
@@ -110,11 +110,11 @@ const getNativeDb = () => {
             console.log('Starting add operation with ingredient:', ingredient);
             const db = getDatabase();
             const now = new Date().toISOString();
-            
+
             try {
                 // Check for duplicates
                 const existingItems = findDuplicates(db, ingredient);
-                
+
                 if (existingItems.length > 0) {
                     // Update existing item quantity
                     const existingItem = existingItems[0];
@@ -124,10 +124,10 @@ const getNativeDb = () => {
 
                     const updateQuery = `
                         UPDATE ingredients 
-                        SET quantity = '${newQuantity}'
+                        SET quantity = '${newQuantity}', dateAdded = '${now}'
                         WHERE id = ${existingItem.id}
                     `;
-                    
+
                     db.execSync(updateQuery);
                     return existingItem.id;
                 }
@@ -151,7 +151,7 @@ const getNativeDb = () => {
                         ${ingredient.notes ? `'${escapeString(ingredient.notes.trim())}'` : 'NULL'}
                     );
                 `;
-                
+
                 db.execSync(insertQuery);
                 const inserted = db.getAllSync('SELECT * FROM ingredients ORDER BY id DESC LIMIT 1');
                 return inserted[0]?.id || null;
@@ -161,13 +161,12 @@ const getNativeDb = () => {
             }
         },
 
-        // Get all ingredients with normalized names
+        // Get all ingredients
         getAll: () => {
             const db = getDatabase();
             try {
                 const results = db.getAllSync(`
                     SELECT * FROM ingredients 
-                    ORDER BY datetime(expiryDate) ASC
                 `);
                 return results;
             } catch (error) {
@@ -196,7 +195,8 @@ const getNativeDb = () => {
         update: (id: number, updates: Partial<Omit<Ingredient, 'id' | 'dateAdded'>>) => {
             console.log('Updating ingredient:', { id, updates });
             const db = getDatabase();
-            
+            const now = new Date().toISOString(); // Get current timestamp
+
             try {
                 // Get current item
                 const currentItem = db.getAllSync(`SELECT * FROM ingredients WHERE id = ${id}`)[0];
@@ -217,13 +217,13 @@ const getNativeDb = () => {
                     if (duplicates.length > 0) {
                         // Merge with existing item
                         const targetItem = duplicates[0];
-                        const newQuantity = (parseInt(checkItem.quantity) || 0) + 
+                        const newQuantity = (parseInt(checkItem.quantity) || 0) +
                                          (parseInt(targetItem.quantity) || 0);
 
-                        // Update the existing duplicate
+                        // Update the existing duplicate, *and update dateAdded*
                         db.execSync(`
                             UPDATE ingredients 
-                            SET quantity = '${newQuantity}'
+                            SET quantity = '${newQuantity}', dateAdded = '${now}'
                             WHERE id = ${targetItem.id}
                         `);
 
@@ -235,7 +235,7 @@ const getNativeDb = () => {
 
                 // If no duplicates or no duplicate-triggering fields updated, proceed with normal update
                 const updateParts = [];
-                
+
                 if (updates.name !== undefined) {
                     updateParts.push(`name = '${escapeString(updates.name.trim())}'`);
                 }
@@ -246,27 +246,30 @@ const getNativeDb = () => {
                     updateParts.push(`expiryDate = '${updates.expiryDate}'`);
                 }
                 if (updates.category !== undefined) {
-                    updateParts.push(updates.category ? 
-                        `category = '${escapeString(updates.category.trim())}'` : 
+                    updateParts.push(updates.category ?
+                        `category = '${escapeString(updates.category.trim())}'` :
                         'category = NULL');
                 }
                 if (updates.notes !== undefined) {
-                    updateParts.push(updates.notes ? 
-                        `notes = '${escapeString(updates.notes.trim())}'` : 
+                    updateParts.push(updates.notes ?
+                        `notes = '${escapeString(updates.notes.trim())}'` :
                         'notes = NULL');
                 }
-        
+                // Always update dateAdded on any update
+                updateParts.push(`dateAdded = '${now}'`);
+
+
                 if (updateParts.length === 0) {
                     console.log('No valid updates provided');
                     return false;
                 }
-        
+
                 const query = `
                     UPDATE ingredients 
                     SET ${updateParts.join(', ')}
                     WHERE id = ${id}
                 `;
-        
+
                 db.execSync(query);
                 return true;
             } catch (error) {
@@ -308,7 +311,7 @@ const getNativeDb = () => {
                     AND date(expiryDate, 'start of day') <= date((SELECT today FROM current_day), '+' || '${daysThreshold}' || ' days')
                     ORDER BY expiryDate ASC
                 `;
-                
+
                 const results = db.getAllSync(query);
                 return results;
             } catch (error) {
