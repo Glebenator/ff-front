@@ -59,9 +59,6 @@ export default function SessionItemEditor({
                   onChangeText={(text) => setEditedItem(prev => ({ ...prev, name: text }))}
                   placeholder="Item name"
                 />
-                <Text style={styles.confidence}>
-                  {Math.round(editedItem.confidence * 100)}% confident
-                </Text>
               </View>
 
               <View style={styles.field}>
@@ -223,11 +220,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     fontSize: theme.fontSize.md,
     color: theme.colors.text.primary,
-  },
-  confidence: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
   },
   directionToggle: {
     flexDirection: 'row',

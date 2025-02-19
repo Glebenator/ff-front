@@ -1,12 +1,13 @@
 // app/ingredient.tsx
 import { useState, useCallback, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, Platform, Pressable, Alert } from 'react-native';
+import { View, Text, TextInput, ScrollView, Platform, Pressable, Alert, StyleSheet } from 'react-native'; // Import StyleSheet
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
+import { sessionManager } from '@/services/sessionManager'; // Import sessionManager
 
 type FormData = {
     name: string;
@@ -29,11 +30,12 @@ export default function IngredientFormScreen() {
         expiryDate: new Date(),
     });
     const [showDatePicker, setShowDatePicker] = useState(Platform.OS === 'ios');
+    const categories = sessionManager.getAvailableCategories(); // Get categories from sessionManager
 
     // Load ingredient data when editing
     useEffect(() => {
         if (!isEditing || Platform.OS === 'web') return;
-        
+
         try {
             const data = ingredientDb.getById(Number(id));
             if (data) {
@@ -64,8 +66,8 @@ export default function IngredientFormScreen() {
 
         try {
             // Use debug date if in dev mode and editing
-            const finalExpiryDate = __DEV__ && isEditing && formData.debugDate 
-                ? formData.debugDate 
+            const finalExpiryDate = __DEV__ && isEditing && formData.debugDate
+                ? formData.debugDate
                 : formData.expiryDate.toISOString().split('T')[0];
 
             // Create the ingredient data object
@@ -73,8 +75,8 @@ export default function IngredientFormScreen() {
                 name: formData.name.trim(),
                 quantity: formData.quantity.trim(),
                 expiryDate: finalExpiryDate,
-                category: formData.category?.trim() || null,
-                notes: formData.notes?.trim() || null
+                category: formData.category?.trim() || undefined,
+                notes: formData.notes?.trim() || undefined
             };
 
             if (isEditing && id) {
@@ -82,7 +84,7 @@ export default function IngredientFormScreen() {
             } else {
                 await ingredientDb.add(ingredientData);
             }
-            
+
             router.back();
         } catch (error) {
             console.error('Error in submit:', error);
@@ -119,7 +121,7 @@ export default function IngredientFormScreen() {
         if (Platform.OS === 'android') {
             setShowDatePicker(false);
         }
-        
+
         if (selectedDate) {
             setFormData(prev => ({
                 ...prev,
@@ -173,7 +175,7 @@ export default function IngredientFormScreen() {
 
     return (
         <>
-            <Stack.Screen 
+            <Stack.Screen
                 options={{
                     title: isEditing ? 'Edit Ingredient' : 'Add Ingredient',
                     headerTintColor: theme.colors.text.primary,
@@ -209,16 +211,28 @@ export default function IngredientFormScreen() {
                         />
                     </View>
 
-                    {/* Category Input */}
+                    {/* Category Input - Buttons */}
                     <View style={sharedStyles.inputGroup}>
                         <Text style={sharedStyles.label}>Category</Text>
-                        <TextInput
-                            style={sharedStyles.input}
-                            value={formData.category}
-                            onChangeText={(text) => updateField('category', text)}
-                            placeholder="Enter category (optional)"
-                            placeholderTextColor={theme.colors.text.secondary}
-                        />
+                        <View style={styles.categoryButtons}>
+                            {categories.map(category => (
+                                <Pressable
+                                    key={category}
+                                    style={[
+                                        styles.categoryButton,
+                                        formData.category === category && styles.categoryButtonActive
+                                    ]}
+                                    onPress={() => updateField('category', category)}
+                                >
+                                    <Text style={[
+                                        styles.categoryButtonText,
+                                        formData.category === category && styles.categoryButtonTextActive
+                                    ]}>
+                                        {category}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </View>
                     </View>
 
                     {/* Debug Date Input - Development Mode Only */}
@@ -259,10 +273,10 @@ export default function IngredientFormScreen() {
                                     <Text style={sharedStyles.dateButtonText}>
                                         {formatDate(formData.expiryDate)}
                                     </Text>
-                                    <Ionicons 
-                                        name="calendar-outline" 
-                                        size={24} 
-                                        color={theme.colors.primary} 
+                                    <Ionicons
+                                        name="calendar-outline"
+                                        size={24}
+                                        color={theme.colors.primary}
                                     />
                                 </Pressable>
 
@@ -299,7 +313,7 @@ export default function IngredientFormScreen() {
                     <View style={sharedStyles.formActions}>
                         {isEditing ? (
                             <View style={sharedStyles.buttonContainer}>
-                                <Pressable 
+                                <Pressable
                                     style={[sharedStyles.button, { backgroundColor: theme.colors.status.error }]}
                                     onPress={handleDelete}
                                 >
@@ -308,7 +322,7 @@ export default function IngredientFormScreen() {
                                         Delete
                                     </Text>
                                 </Pressable>
-                                <Pressable 
+                                <Pressable
                                     style={[sharedStyles.button, { flex: 1 }]}
                                     onPress={handleSubmit}
                                 >
@@ -316,7 +330,7 @@ export default function IngredientFormScreen() {
                                 </Pressable>
                             </View>
                         ) : (
-                            <Pressable 
+                            <Pressable
                                 style={[sharedStyles.button, { width: '100%' }]}
                                 onPress={handleSubmit}
                             >
@@ -329,3 +343,28 @@ export default function IngredientFormScreen() {
         </>
     );
 }
+
+
+const styles = StyleSheet.create({
+    categoryButtons: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: theme.spacing.sm,
+    },
+    categoryButton: {
+        backgroundColor: theme.colors.background.secondary,
+        padding: theme.spacing.sm,
+        borderRadius: theme.borderRadius.md,
+    },
+    categoryButtonActive: {
+        backgroundColor: theme.colors.primary,
+    },
+    categoryButtonText: {
+        fontSize: theme.fontSize.sm,
+        color: theme.colors.text.primary,
+    },
+    categoryButtonTextActive: {
+        color: theme.colors.background.primary,
+        fontWeight: '600',
+    },
+});

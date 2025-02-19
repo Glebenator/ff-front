@@ -266,17 +266,7 @@ export default function SessionsScreen() {
                       <View key={index} style={styles.itemRow}>
                         <View style={styles.itemInfo}>
                           <Text style={styles.itemName}>{item.name}</Text>
-                          <Text style={[
-                            styles.confidence,
-                            { color: item.confidence >= 0.8 
-                              ? theme.colors.status.success 
-                              : item.confidence >= 0.6 
-                              ? theme.colors.status.warning 
-                              : theme.colors.status.error 
-                            }
-                          ]}>
-                            {Math.round(item.confidence * 100)}% confident
-                          </Text>
+                          {/* Removed confidence display */}
                         </View>
 
                         <View style={styles.itemDetails}>
@@ -434,9 +424,6 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     fontWeight: '500',
     color: theme.colors.text.primary,
-  },
-  confidence: {
-    fontSize: theme.fontSize.sm,
   },
   itemDetails: {
     flexDirection: 'row',
