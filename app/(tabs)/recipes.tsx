@@ -1,6 +1,5 @@
-// app/(tabs)/recipes.tsx
-import React, { useState, useCallback } from 'react';
-import { View, ScrollView, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, ScrollView, Text, StyleSheet, Pressable, ActivityIndicator, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
@@ -13,8 +12,8 @@ export default function RecipeScreen() {
   // Tab state
   const [activeTab, setActiveTab] = useState<'suggested' | 'favorites' | 'recent'>('suggested');
   
-  // Preferences state
-  const [showPreferences, setShowPreferences] = useState(true);
+  // Preferences state - dropdown is collapsed by default
+  const [showPreferences, setShowPreferences] = useState(false);
   const [preferences, setPreferences] = useState<RecipePreferences>({
     mealType: 'lunch-dinner',
     quickMeals: false,
@@ -25,9 +24,22 @@ export default function RecipeScreen() {
     healthy: false
   });
 
+  // Animation
+  const animation = useRef(new Animated.Value(0)).current;
+
   // Hooks
   const { recipes, isLoading, error, generateRecipes } = useRecipes();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
+
+  // Toggle preferences dropdown with animation
+  const togglePreferences = useCallback(() => {
+    setShowPreferences(!showPreferences);
+    Animated.timing(animation, {
+      toValue: !showPreferences ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [showPreferences, animation]);
 
   // Handlers
   const handlePreferenceSelect = useCallback((key: keyof Omit<RecipePreferences, 'mealType'>) => {
@@ -66,6 +78,12 @@ export default function RecipeScreen() {
     }
   };
 
+  // Animation interpolation for dropdown height
+  const heightInterpolate = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 540], // Adjust this height as needed
+  });
+
   return (
     <View style={styles.container}>
       {/* Tab Navigation */}
@@ -96,34 +114,22 @@ export default function RecipeScreen() {
             {/* Preferences Section */}
             <View style={styles.preferencesSection}>
               <View style={[sharedStyles.card, styles.preferencesCard]}>
-                {/* Meal Type Selection */}
-                <View style={styles.mealTypeContainer}>
-                  <Text style={styles.sectionLabel}>Meal Type</Text>
-                  <View style={styles.mealTypeButtons}>
-                    <MealTypeButton 
-                      icon="sunny-outline" 
-                      label="Breakfast"
-                      isSelected={preferences.mealType === 'breakfast'}
-                      onPress={() => handleMealTypeChange('breakfast')}
-                    />
-                    <MealTypeButton 
-                      icon="restaurant-outline" 
-                      label="Lunch/Dinner"
-                      isSelected={preferences.mealType === 'lunch-dinner'}
-                      onPress={() => handleMealTypeChange('lunch-dinner')}
-                    />
-                  </View>
-                </View>
-
-                {/* Preferences Toggle */}
+                {/* Preferences Toggle Header */}
                 <Pressable 
-                  onPress={() => setShowPreferences(!showPreferences)}
+                  onPress={togglePreferences}
                   style={styles.preferencesHeader}
                 >
-                  <Text style={styles.sectionLabel}>
-                    Preferences {Object.values(preferences).filter(Boolean).length - 1 > 0 && 
-                      `(${Object.values(preferences).filter(Boolean).length - 1} selected)`}
-                  </Text>
+                  <View style={styles.preferencesHeaderContent}>
+                    <Ionicons
+                      name="options-outline"
+                      size={20}
+                      color={theme.colors.text.primary}
+                    />
+                    <Text style={styles.preferencesHeaderText}>
+                      Recipe Preferences {Object.values(preferences).filter(Boolean).length - 1 > 0 && 
+                        `(${Object.values(preferences).filter(Boolean).length - 1} selected)`}
+                    </Text>
+                  </View>
                   <Ionicons 
                     name={showPreferences ? "chevron-up" : "chevron-down"} 
                     size={20} 
@@ -131,8 +137,31 @@ export default function RecipeScreen() {
                   />
                 </Pressable>
                 
-                {/* Preferences Grid */}
-                {showPreferences && (
+                {/* Animated Dropdown Content */}
+                <Animated.View style={{ height: heightInterpolate, overflow: 'hidden' }}>
+                  {/* Meal Type Selection */}
+                  <View style={styles.mealTypeContainer}>
+                    <Text style={styles.sectionLabel}>Meal Type</Text>
+                    <View style={styles.mealTypeButtons}>
+                      <MealTypeButton 
+                        icon="sunny-outline" 
+                        label="Breakfast"
+                        isSelected={preferences.mealType === 'breakfast'}
+                        onPress={() => handleMealTypeChange('breakfast')}
+                      />
+                      <MealTypeButton 
+                        icon="restaurant-outline" 
+                        label="Lunch/Dinner"
+                        isSelected={preferences.mealType === 'lunch-dinner'}
+                        onPress={() => handleMealTypeChange('lunch-dinner')}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.filterSeparator} />
+
+                  {/* Preferences Grid - Optimized Layout */}
+                  <Text style={styles.sectionLabel}>Dietary Preferences</Text>
                   <View style={styles.preferencesGrid}>
                     <PreferenceButton 
                       icon="flash-outline" 
@@ -151,13 +180,13 @@ export default function RecipeScreen() {
                     <PreferenceButton 
                       icon="barbell-outline" 
                       label="Protein Plus"
-                      subtitle="High protein meals" 
+                      subtitle="High protein" 
                       isSelected={preferences.proteinPlus}
                       onSelect={() => handlePreferenceSelect('proteinPlus')}
                     />
                     <PreferenceButton 
                       icon="basket-outline" 
-                      label="Minimal Shopping"
+                      label="Low Shopping"
                       subtitle="Use what you have" 
                       isSelected={preferences.minimalShopping}
                       onSelect={() => handlePreferenceSelect('minimalShopping')}
@@ -165,7 +194,7 @@ export default function RecipeScreen() {
                     <PreferenceButton 
                       icon="leaf-outline" 
                       label="Vegetarian"
-                      subtitle="Plant-based meals" 
+                      subtitle="Plant-based" 
                       isSelected={preferences.vegetarian}
                       onSelect={() => handlePreferenceSelect('vegetarian')}
                     />
@@ -177,9 +206,9 @@ export default function RecipeScreen() {
                       onSelect={() => handlePreferenceSelect('healthy')}
                     />
                   </View>
-                )}
+                </Animated.View>
 
-                {/* Generate Button */}
+                {/* Generate Button - Always Visible */}
                 <Pressable
                   style={[styles.generateButton, isLoading && styles.generateButtonDisabled]}
                   onPress={handleGenerate}
@@ -389,14 +418,36 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
   },
   preferencesCard: {
-    gap: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  preferencesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.xs,
+  },
+  preferencesHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  preferencesHeaderText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
   },
   sectionLabel: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.sm,
+  },
+  filterSeparator: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.primary,
+    marginVertical: theme.spacing.md,
   },
   mealTypeContainer: {
-    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
   },
   mealTypeButtons: {
     flexDirection: 'row',
@@ -408,7 +459,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: theme.spacing.sm,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
     backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.lg,
   },
@@ -423,11 +474,6 @@ const styles = StyleSheet.create({
     color: theme.colors.background.primary,
     fontWeight: '600',
   },
-  preferencesHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   preferencesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -435,17 +481,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   preferenceButton: {
-    width: '48%',
+    width: '48%', // 2-column layout
     padding: theme.spacing.md,
     backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.lg,
     alignItems: 'flex-start',
+    marginBottom: theme.spacing.sm,
   },
   preferenceButtonSelected: {
     backgroundColor: theme.colors.primary,
   },
   preferenceButtonTitle: {
-    fontSize: theme.fontSize.sm,
+    fontSize: theme.fontSize.md,
     fontWeight: '600',
     color: theme.colors.text.primary,
     marginTop: theme.spacing.xs,
@@ -454,12 +501,13 @@ const styles = StyleSheet.create({
     color: theme.colors.background.primary,
   },
   preferenceButtonSubtitle: {
-    fontSize: theme.fontSize.xs,
+    fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
     marginTop: 2,
   },
   preferenceButtonSubtitleSelected: {
     color: theme.colors.background.primary,
+    opacity: 0.9,
   },
   generateButton: {
     backgroundColor: theme.colors.primary,
@@ -469,6 +517,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   generateButtonDisabled: {
     backgroundColor: theme.colors.background.secondary,

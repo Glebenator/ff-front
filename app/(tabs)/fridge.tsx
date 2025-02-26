@@ -107,7 +107,19 @@ export default function FridgeScreen() {
         return ['all', ...Array.from(categories)];
     }, [ingredients]);
 
-  const filteredIngredients = useCallback(() => {
+    // Map of category names to icons
+    const categoryIcons: {[key: string]: React.ComponentProps<typeof Ionicons>['name']} = {
+        'all': 'apps-outline',
+        'Dairy': 'water-outline',
+        'Meat': 'restaurant-outline',
+        'Vegetables': 'leaf-outline',
+        'Fruits': 'nutrition-outline',
+        'Beverages': 'cafe-outline',
+        'Condiments': 'flask-outline',
+        'Other': 'ellipsis-horizontal-outline'
+    };
+
+    const filteredIngredients = useCallback(() => {
         const normalizedSearch = searchTerm.toLowerCase().trim();
 
         let filtered = ingredients.filter(ingredient => {
@@ -153,7 +165,7 @@ export default function FridgeScreen() {
                 filtered.sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime());
                 break;
             case 'date-added-oldest':
-                filtered.sort((a, b) => new Date(a.dateAdded).getTime() - new Date(a.dateAdded).getTime());
+                filtered.sort((a, b) => new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime());
                 break;
         }
         return filtered;
@@ -202,7 +214,6 @@ export default function FridgeScreen() {
                     ? 'You have no expired ingredients. Great job managing your fridge!'
                     : 'None of your ingredients are expiring soon. Great job keeping track!'}
             </Text>
-             {/* Removed View all ingredients button */}
         </View>
     );
 
@@ -211,13 +222,12 @@ export default function FridgeScreen() {
             <Ionicons name="search-outline" size={64} color={theme.colors.primary} />
             <Text style={sharedStyles.emptyStateTitle}>No matching ingredients</Text>
             <Text style={sharedStyles.emptyStateText}>Try adjusting your search term</Text>
-            {/* Removed the Clear search Button */}
         </View>
     );
 
     const heightInterpolate = animation.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 220], // Adjust based on your content's height!
+        outputRange: [0, 280], // Slightly reduced height as we removed text labels
     });
 
     return (
@@ -227,10 +237,17 @@ export default function FridgeScreen() {
                     style={styles.filtersButton}
                     onPress={() => setIsFiltersExpanded(!isFiltersExpanded)}
                 >
-                    <Text style={styles.filtersButtonText}>Filters</Text>
+                    <View style={styles.filtersButtonContent}>
+                        <Ionicons
+                            name="options-outline"
+                            size={20}
+                            color={theme.colors.text.primary}
+                        />
+                        <Text style={styles.filtersButtonText}>Filters & Categories</Text>
+                    </View>
                     <Ionicons
                         name={isFiltersExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={20}
+                        size={18}
                         color={theme.colors.text.primary}
                     />
                 </Pressable>
@@ -283,37 +300,43 @@ export default function FridgeScreen() {
                             </Pressable>
                         </View>
 
-                        {/* Separator Line */}
                         <View style={styles.filterSeparator} />
-                         <Text style={styles.categoryLabel}>Category</Text>
+
                         {/* Category Filters */}
                         <View style={styles.categoryFilterContainer}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            <View style={styles.categoryGrid}>
                                 {getCategories().map(category => (
                                     <Pressable
                                         key={category}
                                         style={[
-                                            sharedStyles.filterButton,
-                                            selectedCategory === category && sharedStyles.filterButtonActive,
+                                            styles.categoryButton,
+                                            selectedCategory === category && styles.categoryButtonActive,
                                         ]}
                                         onPress={() => setSelectedCategory(category)}
                                     >
+                                        <Ionicons 
+                                            name={categoryIcons[category] || 'help-outline'} 
+                                            size={22} 
+                                            color={selectedCategory === category ? 
+                                                theme.colors.background.primary : 
+                                                theme.colors.text.primary} 
+                                        />
                                         <Text
                                             style={[
-                                                sharedStyles.filterButtonText,
-                                                selectedCategory === category && sharedStyles.filterButtonTextActive,
+                                                styles.categoryButtonText,
+                                                selectedCategory === category && styles.categoryButtonTextActive,
                                             ]}
                                         >
                                             {category === 'all' ? 'All' : category}
                                         </Text>
                                     </Pressable>
                                 ))}
-                            </ScrollView>
+                            </View>
                         </View>
 
-                        {/* Separator Line */}
                         <View style={styles.filterSeparator} />
 
+                        {/* Search Bar */}
                         <SearchBar
                             value={searchTerm}
                             onChangeText={setSearchTerm}
@@ -369,9 +392,9 @@ export default function FridgeScreen() {
 }
 
 const styles = StyleSheet.create({
-     filtersContainer: {
+    filtersContainer: {
         paddingHorizontal: theme.spacing.md,
-        paddingVertical: theme.spacing.sm,
+        paddingVertical: theme.spacing.xs,
         backgroundColor: theme.colors.background.secondary,
         borderBottomLeftRadius: theme.borderRadius.md,
         borderBottomRightRadius: theme.borderRadius.md,
@@ -380,8 +403,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: theme.spacing.md,
-        backgroundColor: theme.colors.background.secondary, // Consistent background
+        padding: theme.spacing.sm,
+        backgroundColor: theme.colors.background.secondary,
+    },
+    filtersButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
     },
     filtersButtonText: {
         fontSize: theme.fontSize.md,
@@ -392,32 +420,43 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         gap: theme.spacing.sm,
-        paddingVertical: theme.spacing.sm, // Consistent padding
-    },
-    categoryFilterContainer: {
-        paddingVertical: theme.spacing.md, // Consistent padding
-    },
-    categoryLabel: {
-        fontSize: theme.fontSize.lg,
-        fontWeight: 'bold',
-        color: theme.colors.text.primary,
-        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
     },
     filterSeparator: {
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: theme.colors.border.primary,
-        marginHorizontal: theme.spacing.md,
+        marginVertical: theme.spacing.xs,
     },
-    viewAllButton: {
+    categoryFilterContainer: {
         paddingVertical: theme.spacing.sm,
-        paddingHorizontal: theme.spacing.xl,
-        backgroundColor: theme.colors.primary,
-        borderRadius: theme.borderRadius.lg,
-        marginTop: theme.spacing.md,
     },
-    viewAllButtonText: {
+    categoryGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-start', // Changed to better handle 3 columns
+        gap: theme.spacing.xs, // Reduced gap for tighter layout
+    },
+    categoryButton: {
+        width: '31%', // For a 3-column layout
+        flexDirection: 'column', // Changed to column for better space usage
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: theme.spacing.xs,
+        paddingVertical: theme.spacing.sm,
+        paddingHorizontal: theme.spacing.sm,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.borderRadius.lg,
+        marginBottom: theme.spacing.sm,
+    },
+    categoryButtonActive: {
+        backgroundColor: theme.colors.primary,
+    },
+    categoryButtonText: {
+        fontSize: theme.fontSize.sm,
+        color: theme.colors.text.primary,
+    },
+    categoryButtonTextActive: {
         color: theme.colors.background.primary,
-        fontSize: theme.fontSize.md,
         fontWeight: '600',
     },
 });
