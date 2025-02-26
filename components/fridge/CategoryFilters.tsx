@@ -26,10 +26,15 @@ export default function CategoryFilters({
     'Other': 'ellipsis-horizontal-outline'
   };
 
+  // Ensure "Other" is included in the displayed categories
+  const displayCategories = categories.includes('Other') ? 
+    categories : 
+    [...categories, 'Other'];
+
   return (
     <View style={styles.categoryFilterContainer}>
       <View style={styles.categoryGrid}>
-        {categories.map(category => (
+        {displayCategories.map(category => (
           <Pressable
             key={category}
             style={[

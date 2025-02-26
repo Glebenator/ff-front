@@ -1,15 +1,6 @@
 // app/services/database/ingredientDb.ts
 import { Platform } from 'react-native';
-
-export interface Ingredient {
-    id?: number;
-    name: string;
-    quantity: string;
-    expiryDate: string;
-    dateAdded: string;  // Keep dateAdded
-    category?: string;
-    notes?: string;
-}
+import { Ingredient } from '@/types/types';
 
 // Helper functions for database operations
 const normalizeItemName = (name: string): string => {

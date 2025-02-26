@@ -1,26 +1,25 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ingredientDb } from '@/services/database/ingredientDb';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
-import { StyleSheet } from 'react-native';
+import { 
+  ExpiryStatus, 
+  StatusInfoType, 
+  StatusCardProps, 
+  QuickActionButtonProps 
+} from '@/types/types';
 
-type ExpiryStatus = {
-  expiringSoon: number;
-  expired: number;
-  total: number;
-};
-
-export const MobileHome = () => {
+export const MobileHome: React.FC = () => {
   const [status, setStatus] = useState<ExpiryStatus>({
     expiringSoon: 0,
     expired: 0,
     total: 0
   });
 
-  const loadExpiryStatus = useCallback(() => {
+  const loadExpiryStatus = useCallback((): void => {
     try {
       const expiringItems = ingredientDb.getExpiringSoon(3);
       const allItems = ingredientDb.getAll();
@@ -62,8 +61,8 @@ export const MobileHome = () => {
   );
 };
 
-const StatusCard = ({ status }: { status: ExpiryStatus }) => {
-  const getStatusInfo = () => {
+const StatusCard: React.FC<StatusCardProps> = ({ status }) => {
+  const getStatusInfo = (): StatusInfoType => {
     if (status.expired > 0) {
       return {
         color: theme.colors.status.error,
@@ -102,7 +101,7 @@ const StatusCard = ({ status }: { status: ExpiryStatus }) => {
   );
 };
 
-const WellMaintainedCard = () => (
+const WellMaintainedCard: React.FC = () => (
   <View style={[styles.card, styles.smallCard]}>
     <View style={styles.cardHeader}>
       <Text style={styles.cardTitle}>Great job!</Text>
@@ -112,7 +111,7 @@ const WellMaintainedCard = () => (
   </View>
 );
 
-const RecipeIdeas = () => (
+const RecipeIdeas: React.FC = () => (
   <View style={styles.card}>
     <View style={styles.recipeHeader}>
       <View style={styles.recipeTitleContainer}>
@@ -135,7 +134,7 @@ const RecipeIdeas = () => (
   </View>
 );
 
-const QuickActions = () => (
+const QuickActions: React.FC = () => (
   <View style={styles.quickActionsSection}>
     <Text style={styles.sectionTitle}>Quick Actions</Text>
     <View style={styles.quickActionsGrid}>
@@ -162,16 +161,11 @@ const QuickActions = () => (
   </View>
 );
 
-const QuickActionButton = ({ 
+const QuickActionButton: React.FC<QuickActionButtonProps> = ({ 
   icon, 
   text, 
   color, 
   onPress 
-}: { 
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  text: string;
-  color: string;
-  onPress: () => void;
 }) => (
   <Pressable 
     style={styles.quickActionButton}

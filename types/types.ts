@@ -26,3 +26,27 @@ export type SortType =
 export interface CategoryIconMapping {
   [key: string]: React.ComponentProps<typeof import('@expo/vector-icons').Ionicons>['name'];
 }
+
+// Home screen types
+export type ExpiryStatus = {
+  expiringSoon: number;
+  expired: number;
+  total: number;
+};
+
+export type StatusInfoType = {
+  color: string;
+  count: number;
+  message: string;
+};
+
+export interface StatusCardProps {
+  status: ExpiryStatus;
+}
+
+export interface QuickActionButtonProps {
+  icon: React.ComponentProps<typeof import('@expo/vector-icons').Ionicons>['name'];
+  text: string;
+  color: string;
+  onPress: () => void;
+}
