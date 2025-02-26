@@ -12,13 +12,13 @@ export default function ExpiryFilters({ filter, setFilter }: ExpiryFiltersProps)
   return (
     <View style={styles.expiryFilterContainer}>
       <Pressable
-        style={[sharedStyles.filterButton, filter === 'all' && sharedStyles.filterButtonActive]}
+        style={[sharedStyles.filterButton, filter === 'all' && sharedStyles.filterButtonActive as any]}
         onPress={() => setFilter('all')}
       >
         <Text
           style={[
             sharedStyles.filterButtonText,
-            filter === 'all' && sharedStyles.filterButtonTextActive,
+            filter === 'all' && sharedStyles.filterButtonTextActive as any,
           ]}
         >
           All Items
@@ -27,27 +27,27 @@ export default function ExpiryFilters({ filter, setFilter }: ExpiryFiltersProps)
       <Pressable
         style={[
           sharedStyles.filterButton,
-          filter === 'expiring-soon' && sharedStyles.filterButtonActive,
+          filter === 'expiring-soon' && sharedStyles.filterButtonActive as any,
         ]}
         onPress={() => setFilter('expiring-soon')}
       >
         <Text
           style={[
             sharedStyles.filterButtonText,
-            filter === 'expiring-soon' && sharedStyles.filterButtonTextActive,
+            filter === 'expiring-soon' && sharedStyles.filterButtonTextActive as any,
           ]}
         >
           Expiring Soon
         </Text>
       </Pressable>
       <Pressable
-        style={[sharedStyles.filterButton, filter === 'expired' && sharedStyles.filterButtonActive]}
+        style={[sharedStyles.filterButton, filter === 'expired' && sharedStyles.filterButtonActive as any]}
         onPress={() => setFilter('expired')}
       >
         <Text
           style={[
             sharedStyles.filterButtonText,
-            filter === 'expired' && sharedStyles.filterButtonTextActive,
+            filter === 'expired' && sharedStyles.filterButtonTextActive as any,
           ]}
         >
           Expired

@@ -51,9 +51,9 @@ export default function FridgeScreen() {
                     data = ingredientDb.getExpiringSoon(5);
                     break;
                 case 'expired':
-                    data = ingredientDb.getAll().filter(ingredient => {
-                        const expiryDate = new Date(ingredient.expiryDate);
-                        const today = new Date();
+                    data = ingredientDb.getAll().filter((ingredient: Ingredient) => {
+                        const expiryDate: Date = new Date(ingredient.expiryDate);
+                        const today: Date = new Date();
                         today.setHours(0, 0, 0, 0);
                         return expiryDate < today;
                     });
@@ -150,7 +150,7 @@ export default function FridgeScreen() {
     }
 
     return (
-        <View style={sharedStyles.container}>
+        <View style={sharedStyles.container as any}>
             <FiltersSection
                 filter={filter}
                 setFilter={setFilter}
@@ -171,7 +171,7 @@ export default function FridgeScreen() {
                 <NoSearchResults />
             ) : (
                 <ScrollView>
-                    <View style={sharedStyles.grid}>
+                    <View style={sharedStyles.grid as any}>
                        {filteredIngredients().map(ingredient => (
                             <IngredientCard
                                 key={ingredient.id}

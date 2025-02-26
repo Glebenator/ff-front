@@ -1,76 +1,17 @@
-// app/(tabs)/sessions.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { theme } from '@/styles/theme';
-import { sharedStyles } from '@/styles/sharedStyles';
 import { useSessions } from '@/hooks/useSessions';
 import { sessionManager, type EditableFridgeItem } from '@/services/sessionManager';
 import { toastStore } from '@/services/toastStore';
 import SessionItemEditor from '@/components/SessionItemEditor';
+import { 
+  FilterHeader, 
+  SessionCard, 
+  EmptyState, 
+  type SessionStatus 
+} from '@/components/sessions';
 
-type SessionStatus = 'pending' | 'approved' | 'rejected';
-
-const FILTER_OPTIONS: { label: string; value: SessionStatus; }[] = [
-  { label: 'Pending', value: 'pending' },
-  { label: 'Approved', value: 'approved' },
-  { label: 'Rejected', value: 'rejected' },
-];
-
-// FilterHeader Component
-interface FilterHeaderProps {
-  activeFilter: SessionStatus;
-  setActiveFilter: (filter: SessionStatus) => void;
-  onClear: () => void;
-  hasItems: boolean;
-}
-
-const FilterHeader = ({ 
-  activeFilter, 
-  setActiveFilter, 
-  onClear, 
-  hasItems 
-}: FilterHeaderProps) => (
-  <View style={styles.filterHeader}>
-    <View style={sharedStyles.filterContainer}>
-      {FILTER_OPTIONS.map((option) => (
-        <Pressable
-          key={option.value}
-          style={[
-            sharedStyles.filterButton,
-            activeFilter === option.value && sharedStyles.filterButtonActive
-          ]}
-          onPress={() => setActiveFilter(option.value)}
-        >
-          <Text style={[
-            sharedStyles.filterButtonText,
-            activeFilter === option.value && sharedStyles.filterButtonTextActive
-          ]}>
-            {option.label}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
-    
-    {hasItems && (
-      <Pressable
-        style={styles.clearButton}
-        onPress={onClear}
-      >
-        <Ionicons 
-          name="trash-outline" 
-          size={18} 
-          color={theme.colors.status.error} 
-        />
-        <Text style={styles.clearButtonText}>
-          Clear {activeFilter}
-        </Text>
-      </Pressable>
-    )}
-  </View>
-);
-
-// Main Component
 export default function SessionsScreen() {
   const {
     sessions,
@@ -80,7 +21,6 @@ export default function SessionsScreen() {
   } = useSessions();
 
   const [activeFilter, setActiveFilter] = useState<SessionStatus>('pending');
-  const [expandedSessions, setExpandedSessions] = useState<{ [key: string]: boolean }>({});
   const [selectedItem, setSelectedItem] = useState<{
     sessionId: string;
     itemIndex: number;
@@ -90,11 +30,6 @@ export default function SessionsScreen() {
   // Initialize state
   useEffect(() => {
     dismissNotification();
-    const initialExpanded = sessions.reduce((acc, session) => ({
-      ...acc,
-      [session.sessionId]: false
-    }), {});
-    setExpandedSessions(initialExpanded);
   }, []);
 
   // Handler functions
@@ -105,10 +40,7 @@ export default function SessionsScreen() {
       `Clear ${statusLabel} Sessions`,
       `Are you sure you want to clear all ${status} sessions?`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Clear',
           style: 'destructive',
@@ -165,56 +97,8 @@ export default function SessionsScreen() {
     );
   };
 
-  const toggleSession = (sessionId: string) => {
-    setExpandedSessions(prev => ({
-      ...prev,
-      [sessionId]: !prev[sessionId]
-    }));
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return theme.colors.status.warning;
-      case 'approved':
-        return theme.colors.status.success;
-      case 'rejected':
-        return theme.colors.status.error;
-      default:
-        return theme.colors.text.secondary;
-    }
-  };
-
-  const renderEmptyState = () => {
-    const emptyStateContent = {
-      pending: {
-        icon: 'time-outline',
-        title: 'No Pending Sessions',
-        message: 'No sessions currently need your review'
-      },
-      approved: {
-        icon: 'checkmark-circle-outline',
-        title: 'No Approved Sessions',
-        message: 'Sessions you approve will appear here'
-      },
-      rejected: {
-        icon: 'close-circle-outline',
-        title: 'No Rejected Sessions',
-        message: 'Sessions you reject will appear here'
-      }
-    }[activeFilter];
-
-    return (
-      <View style={sharedStyles.emptyState}>
-        <Ionicons 
-          name={emptyStateContent.icon as any}
-          size={theme.fontSize.hero} 
-          color={theme.colors.text.secondary}
-        />
-        <Text style={sharedStyles.emptyStateTitle}>{emptyStateContent.title}</Text>
-        <Text style={sharedStyles.emptyStateText}>{emptyStateContent.message}</Text>
-      </View>
-    );
+  const handleEditItemPress = (sessionId: string, itemIndex: number, item: EditableFridgeItem) => {
+    setSelectedItem({ sessionId, itemIndex, item });
   };
 
   const filteredSessions = sessions.filter(session => session.status === activeFilter);
@@ -229,102 +113,23 @@ export default function SessionsScreen() {
       />
 
       {filteredSessions.length === 0 ? (
-        renderEmptyState()
+        <EmptyState status={activeFilter} />
       ) : (
         <ScrollView style={styles.sessionsList}>
           {filteredSessions.map((session) => (
-            <Pressable 
-              key={session.sessionId} 
-              style={styles.sessionCard}
-              onPress={() => toggleSession(session.sessionId)}
-            >
-              <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                  <Ionicons
-                    name={expandedSessions[session.sessionId] ? "chevron-down" : "chevron-forward"}
-                    size={20}
-                    color={theme.colors.text.secondary}
-                  />
-                  <Text style={styles.timestamp}>
-                    {new Date(session.timestamp).toLocaleString()}
-                  </Text>
-                </View>
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusColor(session.status) }
-                ]}>
-                  <Text style={styles.statusText}>
-                    {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-                  </Text>
-                </View>
-              </View>
-
-              {expandedSessions[session.sessionId] && (
-                <>
-                  <View style={styles.itemsList}>
-                    {session.items.map((item, index) => (
-                      <View key={index} style={styles.itemRow}>
-                        <View style={styles.itemInfo}>
-                          <Text style={styles.itemName}>{item.name}</Text>
-                          {/* Removed confidence display */}
-                        </View>
-
-                        <View style={styles.itemDetails}>
-                          <Ionicons
-                            name={item.direction === 'in' ? 'arrow-down' : 'arrow-up'}
-                            size={20}
-                            color={theme.colors.text.primary}
-                          />
-                          <Text style={styles.direction}>
-                            {item.direction === 'in' ? 'In' : 'Out'}
-                          </Text>
-                          {item.quantity && item.direction === 'in' && (
-                            <Text style={styles.quantity}>× {item.quantity}</Text>
-                          )}
-                          
-                          {session.status === 'pending' && (
-                            <Pressable
-                              style={styles.editButton}
-                              onPress={() => setSelectedItem({ 
-                                sessionId: session.sessionId, 
-                                itemIndex: index, 
-                                item 
-                              })}
-                            >
-                              <Ionicons
-                                name="pencil"
-                                size={16}
-                                color={theme.colors.text.secondary}
-                              />
-                            </Pressable>
-                          )}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-
-                  {session.status === 'pending' && (
-                    <View style={styles.actions}>
-                      <Pressable
-                        style={[styles.button, styles.approveButton]}
-                        onPress={() => approveSession(session.sessionId, session.items)}
-                      >
-                        <Ionicons name="checkmark" size={20} color={theme.colors.background.primary} />
-                        <Text style={styles.buttonText}>Approve</Text>
-                      </Pressable>
-
-                      <Pressable
-                        style={[styles.button, styles.rejectButton]}
-                        onPress={() => rejectSession(session.sessionId)}
-                      >
-                        <Ionicons name="close" size={20} color={theme.colors.background.primary} />
-                        <Text style={styles.buttonText}>Reject</Text>
-                      </Pressable>
-                    </View>
-                  )}
-                </>
-              )}
-            </Pressable>
+            <SessionCard
+              key={session.sessionId}
+              session={{
+                ...session,
+                items: session.items.map(item => ({
+                  ...item,
+                  quantity: item.quantity ?? 1
+                }))
+              }}
+              onApprove={approveSession}
+              onReject={rejectSession}
+              onEditItem={handleEditItemPress}
+            />
           ))}
         </ScrollView>
       )}
@@ -352,119 +157,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background.primary,
   },
-  filterHeader: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.primary,
-    gap: theme.spacing.md,
-  },
-  clearButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    gap: theme.spacing.xs,
-    padding: theme.spacing.sm,
-  },
-  clearButtonText: {
-    color: theme.colors.status.error,
-    fontSize: theme.fontSize.sm,
-    fontWeight: '500',
-  },
   sessionsList: {
     flex: 1,
     padding: theme.spacing.md,
-  },
-  sessionCard: {
-    backgroundColor: theme.colors.background.tertiary,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  timestamp: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
-  },
-  statusBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  statusText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.background.primary,
-    fontWeight: '500',
-  },
-  itemsList: {
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.background.secondary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    fontSize: theme.fontSize.md,
-    fontWeight: '500',
-    color: theme.colors.text.primary,
-  },
-  itemDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  direction: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.primary,
-  },
-  quantity: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
-  },
-  editButton: {
-    padding: theme.spacing.xs,
-    marginLeft: theme.spacing.sm,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.lg,
-  },
-  button: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    gap: theme.spacing.sm,
-  },
-  approveButton: {
-    backgroundColor: theme.colors.status.success,
-  },
-  rejectButton: {
-    backgroundColor: theme.colors.status.error,
-  },
-  buttonText: {
-    color: theme.colors.background.primary,
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
   },
 });

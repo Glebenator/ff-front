@@ -13,7 +13,7 @@ function TabIcon({ name, focused, color }: {
 }) {
   return (
     <Ionicons
-      name={focused ? name.replace('-outline', '') : name}
+      name={focused ? name.replace('-outline', '') as React.ComponentProps<typeof Ionicons>['name'] : name}
       size={24}
       color={color}
     />
