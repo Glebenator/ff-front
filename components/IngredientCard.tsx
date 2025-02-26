@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -5,6 +6,7 @@ import { useState } from 'react';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import { ingredientDb } from '@/services/database/ingredientDb';
+import { type Ingredient } from '@/types/types';
 
 type IngredientCardProps = {
     id: number;

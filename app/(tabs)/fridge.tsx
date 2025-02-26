@@ -1,18 +1,16 @@
-// FridgeScreen.tsx
-import { View, ScrollView, StyleSheet, Text, Pressable, Platform, Animated } from 'react-native';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, Pressable, Platform } from 'react-native';
+import { useState, useCallback } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import IngredientCard from '@/components/IngredientCard';
-import SearchBar from '@/components/SearchBar';
-import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
+import { ingredientDb } from '@/services/database/ingredientDb';
 import { WebFridge } from '@/components/WebFridge';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import SortModal from '@/components/sortModal';
-
-type FilterType = 'all' | 'expiring-soon' | 'expired';
-type SortType = 'expiry-asc' | 'expiry-desc' | 'name-asc' | 'name-desc' | 'date-added-newest' | 'date-added-oldest';
+import { type Ingredient, type FilterType, type SortType } from '@/types/types';
+import { EmptyFridge, NoFilteredResults, NoSearchResults, LoadingState } from '@/components/fridge/EmptyStates';
+import FiltersSection from '@/components/fridge/FiltersSection';
 
 export default function FridgeScreen() {
     const { initialFilter } = useLocalSearchParams<{ initialFilter?: FilterType }>();
@@ -23,17 +21,6 @@ export default function FridgeScreen() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>('all');
     const [sortOrder, setSortOrder] = useState<SortType>('expiry-asc');
     const [isSortModalVisible, setIsSortModalVisible] = useState(false);
-    const [isFiltersExpanded, setIsFiltersExpanded] = useState(false); // State for expanded/collapsed
-
-    const animation = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        Animated.timing(animation, {
-            toValue: isFiltersExpanded ? 1 : 0,
-            duration: 300,
-            useNativeDriver: false,
-        }).start();
-    }, [isFiltersExpanded, animation]);
 
     useFocusEffect(
         useCallback(() => {
@@ -107,18 +94,6 @@ export default function FridgeScreen() {
         return ['all', ...Array.from(categories)];
     }, [ingredients]);
 
-    // Map of category names to icons
-    const categoryIcons: {[key: string]: React.ComponentProps<typeof Ionicons>['name']} = {
-        'all': 'apps-outline',
-        'Dairy': 'water-outline',
-        'Meat': 'restaurant-outline',
-        'Vegetables': 'leaf-outline',
-        'Fruits': 'nutrition-outline',
-        'Beverages': 'cafe-outline',
-        'Condiments': 'flask-outline',
-        'Other': 'ellipsis-horizontal-outline'
-    };
-
     const filteredIngredients = useCallback(() => {
         const normalizedSearch = searchTerm.toLowerCase().trim();
 
@@ -145,7 +120,6 @@ export default function FridgeScreen() {
                 default:
                     return matchesSearch && matchesCategory;
             }
-
         });
 
         switch (sortOrder) {
@@ -169,191 +143,30 @@ export default function FridgeScreen() {
                 break;
         }
         return filtered;
-
     }, [ingredients, searchTerm, selectedCategory, sortOrder, filter]);
-
-    const getSortIndicatorText = () => {
-        switch (sortOrder) {
-            case 'expiry-asc':
-                return 'Expiry (Asc)';
-            case 'expiry-desc':
-                return 'Expiry (Desc)';
-            case 'name-asc':
-                return 'Name (A-Z)';
-            case 'name-desc':
-                return 'Name (Z-A)';
-            case 'date-added-newest':
-                return 'Date (Newest)';
-            case 'date-added-oldest':
-                return 'Date (Oldest)';
-            default:
-                return 'Unknown Sort Order';
-        }
-    };
 
     if (Platform.OS === 'web') {
         return <WebFridge />;
     }
 
-    const EmptyState = () => (
-        <View style={sharedStyles.emptyState}>
-            <Ionicons name="nutrition-outline" size={64} color={theme.colors.primary} />
-            <Text style={sharedStyles.emptyStateTitle}>Your fridge is empty!</Text>
-            <Text style={sharedStyles.emptyStateText}>Start by adding your first ingredient using the + button below</Text>
-        </View>
-    );
-
-    const NoResults = () => (
-        <View style={sharedStyles.emptyState}>
-            <Ionicons name="search-outline" size={64} color={theme.colors.primary} />
-            <Text style={sharedStyles.emptyStateTitle}>
-                {filter === 'expired' ? 'No expired items' : 'No expiring items'}
-            </Text>
-            <Text style={sharedStyles.emptyStateText}>
-                {filter === 'expired'
-                    ? 'You have no expired ingredients. Great job managing your fridge!'
-                    : 'None of your ingredients are expiring soon. Great job keeping track!'}
-            </Text>
-        </View>
-    );
-
-    const NoSearchResults = () => (
-        <View style={sharedStyles.emptyState}>
-            <Ionicons name="search-outline" size={64} color={theme.colors.primary} />
-            <Text style={sharedStyles.emptyStateTitle}>No matching ingredients</Text>
-            <Text style={sharedStyles.emptyStateText}>Try adjusting your search term</Text>
-        </View>
-    );
-
-    const heightInterpolate = animation.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 280], // Slightly reduced height as we removed text labels
-    });
-
     return (
         <View style={sharedStyles.container}>
-            <View style={styles.filtersContainer}>
-                <Pressable
-                    style={styles.filtersButton}
-                    onPress={() => setIsFiltersExpanded(!isFiltersExpanded)}
-                >
-                    <View style={styles.filtersButtonContent}>
-                        <Ionicons
-                            name="options-outline"
-                            size={20}
-                            color={theme.colors.text.primary}
-                        />
-                        <Text style={styles.filtersButtonText}>Filters & Categories</Text>
-                    </View>
-                    <Ionicons
-                        name={isFiltersExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={18}
-                        color={theme.colors.text.primary}
-                    />
-                </Pressable>
-
-                <Animated.View style={{ height: heightInterpolate, overflow: 'hidden' }}>
-                    <>
-                        {/* Expiry Date Filters */}
-                        <View style={styles.expiryFilterContainer}>
-                            <Pressable
-                                style={[sharedStyles.filterButton, filter === 'all' && sharedStyles.filterButtonActive]}
-                                onPress={() => setFilter('all')}
-                            >
-                                <Text
-                                    style={[
-                                        sharedStyles.filterButtonText,
-                                        filter === 'all' && sharedStyles.filterButtonTextActive,
-                                    ]}
-                                >
-                                    All Items
-                                </Text>
-                            </Pressable>
-                            <Pressable
-                                style={[
-                                    sharedStyles.filterButton,
-                                    filter === 'expiring-soon' && sharedStyles.filterButtonActive,
-                                ]}
-                                onPress={() => setFilter('expiring-soon')}
-                            >
-                                <Text
-                                    style={[
-                                        sharedStyles.filterButtonText,
-                                        filter === 'expiring-soon' && sharedStyles.filterButtonTextActive,
-                                    ]}
-                                >
-                                    Expiring Soon
-                                </Text>
-                            </Pressable>
-                            <Pressable
-                                style={[sharedStyles.filterButton, filter === 'expired' && sharedStyles.filterButtonActive]}
-                                onPress={() => setFilter('expired')}
-                            >
-                                <Text
-                                    style={[
-                                        sharedStyles.filterButtonText,
-                                        filter === 'expired' && sharedStyles.filterButtonTextActive,
-                                    ]}
-                                >
-                                    Expired
-                                </Text>
-                            </Pressable>
-                        </View>
-
-                        <View style={styles.filterSeparator} />
-
-                        {/* Category Filters */}
-                        <View style={styles.categoryFilterContainer}>
-                            <View style={styles.categoryGrid}>
-                                {getCategories().map(category => (
-                                    <Pressable
-                                        key={category}
-                                        style={[
-                                            styles.categoryButton,
-                                            selectedCategory === category && styles.categoryButtonActive,
-                                        ]}
-                                        onPress={() => setSelectedCategory(category)}
-                                    >
-                                        <Ionicons 
-                                            name={categoryIcons[category] || 'help-outline'} 
-                                            size={22} 
-                                            color={selectedCategory === category ? 
-                                                theme.colors.background.primary : 
-                                                theme.colors.text.primary} 
-                                        />
-                                        <Text
-                                            style={[
-                                                styles.categoryButtonText,
-                                                selectedCategory === category && styles.categoryButtonTextActive,
-                                            ]}
-                                        >
-                                            {category === 'all' ? 'All' : category}
-                                        </Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        </View>
-
-                        <View style={styles.filterSeparator} />
-
-                        {/* Search Bar */}
-                        <SearchBar
-                            value={searchTerm}
-                            onChangeText={setSearchTerm}
-                            onClear={() => setSearchTerm('')}
-                            sortIndicatorText={getSortIndicatorText()}
-                            onSortPress={() => setIsSortModalVisible(true)}
-                        />
-                    </>
-                </Animated.View>
-            </View>
+            <FiltersSection
+                filter={filter}
+                setFilter={setFilter}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                categories={getCategories()}
+                sortOrder={sortOrder}
+                onSortPress={() => setIsSortModalVisible(true)}
+            />
 
             {isLoading ? (
-                <View style={sharedStyles.emptyState}>
-                    <Text style={sharedStyles.emptyStateText}>Loading...</Text>
-                </View>
+                <LoadingState />
             ) : ingredients.length === 0 ? (
-                filter === 'all' ? <EmptyState /> : <NoResults />
+                filter === 'all' ? <EmptyFridge /> : <NoFilteredResults filter={filter as 'expired' | 'expiring-soon'} />
             ) : filteredIngredients().length === 0 ? (
                 <NoSearchResults />
             ) : (
@@ -390,73 +203,3 @@ export default function FridgeScreen() {
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    filtersContainer: {
-        paddingHorizontal: theme.spacing.md,
-        paddingVertical: theme.spacing.xs,
-        backgroundColor: theme.colors.background.secondary,
-        borderBottomLeftRadius: theme.borderRadius.md,
-        borderBottomRightRadius: theme.borderRadius.md,
-    },
-    filtersButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: theme.spacing.sm,
-        backgroundColor: theme.colors.background.secondary,
-    },
-    filtersButtonContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.sm,
-    },
-    filtersButtonText: {
-        fontSize: theme.fontSize.md,
-        fontWeight: '600',
-        color: theme.colors.text.primary,
-    },
-    expiryFilterContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: theme.spacing.sm,
-        paddingVertical: theme.spacing.sm,
-    },
-    filterSeparator: {
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.colors.border.primary,
-        marginVertical: theme.spacing.xs,
-    },
-    categoryFilterContainer: {
-        paddingVertical: theme.spacing.sm,
-    },
-    categoryGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-start', // Changed to better handle 3 columns
-        gap: theme.spacing.xs, // Reduced gap for tighter layout
-    },
-    categoryButton: {
-        width: '31%', // For a 3-column layout
-        flexDirection: 'column', // Changed to column for better space usage
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: theme.spacing.xs,
-        paddingVertical: theme.spacing.sm,
-        paddingHorizontal: theme.spacing.sm,
-        backgroundColor: theme.colors.background.secondary,
-        borderRadius: theme.borderRadius.lg,
-        marginBottom: theme.spacing.sm,
-    },
-    categoryButtonActive: {
-        backgroundColor: theme.colors.primary,
-    },
-    categoryButtonText: {
-        fontSize: theme.fontSize.sm,
-        color: theme.colors.text.primary,
-    },
-    categoryButtonTextActive: {
-        color: theme.colors.background.primary,
-        fontWeight: '600',
-    },
-});

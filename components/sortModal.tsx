@@ -3,15 +3,7 @@ import React from 'react';
 import { View, Text, Pressable, Modal, StyleSheet, FlatList } from 'react-native';
 import { theme } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
-
-type SortType = 'expiry-asc' | 'expiry-desc' | 'name-asc' | 'name-desc' | 'date-added-newest' | 'date-added-oldest';
-
-interface SortOption {
-  label: string;
-  value: SortType;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  description?: string;
-}
+import { type SortType } from '@/types/types';
 
 interface SortModalProps {
   visible: boolean;
