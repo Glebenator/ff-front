@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '@/styles/theme';
 import { NotificationService } from '@/services/notifications/notificationService';
-import SessionNotification from "@/components/SessionNotification";
+import SessionNotification from "@/components/sessions/SessionNotification";
 import Toast from "@/components/Toast";
 
 export default function RootLayout() {

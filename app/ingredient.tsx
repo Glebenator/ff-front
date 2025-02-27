@@ -4,7 +4,8 @@ import { View, Text, TextInput, ScrollView, Platform, Pressable, Alert, StyleShe
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
+import { ingredientDb } from '@/services/database/ingredientDb';
+import { Ingredient } from '@/types/types'; // Import Ingredient type
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import { sessionManager } from '@/services/sessionManager'; // Import sessionManager

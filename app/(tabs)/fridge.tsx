@@ -2,12 +2,12 @@ import { View, ScrollView, StyleSheet, Pressable, Platform } from 'react-native'
 import { useState, useCallback } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import IngredientCard from '@/components/IngredientCard';
+import IngredientCard from '@/components/ingredient/IngredientCard';
 import { ingredientDb } from '@/services/database/ingredientDb';
-import { WebFridge } from '@/components/WebFridge';
+import { WebFridge } from '@/components/fridge/WebFridge';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
-import SortModal from '@/components/sortModal';
+import SortModal from '@/components/fridge/sortModal';
 import { type Ingredient, type FilterType, type SortType } from '@/types/types';
 import { EmptyFridge, NoFilteredResults, NoSearchResults, LoadingState } from '@/components/fridge/EmptyStates';
 import FiltersSection from '@/components/fridge/FiltersSection';

@@ -4,7 +4,7 @@ import { theme } from '@/styles/theme';
 import { useSessions } from '@/hooks/useSessions';
 import { sessionManager, type EditableFridgeItem } from '@/services/sessionManager';
 import { toastStore } from '@/services/toastStore';
-import SessionItemEditor from '@/components/SessionItemEditor';
+import SessionItemEditor from '@/components/sessions/SessionItemEditor';
 import { 
   FilterHeader, 
   SessionCard, 

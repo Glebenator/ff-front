@@ -4,7 +4,7 @@ import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import { useRecipes } from '@/hooks/useRecipes';
 import { useFavorites } from '@/hooks/useFavorites';
-import RecipeList from '@/components/RecipeList';
+import RecipeList from '@/components/recipes/RecipeList';
 import { type RecipePreferences } from '@/hooks/useRecipes';
 import TabNavigation from '@/components/recipes/TabNavigation';
 import PreferencesSection from '@/components/recipes/PreferencesSection';
