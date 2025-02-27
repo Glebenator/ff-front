@@ -5,6 +5,13 @@ import { theme } from '@/styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { type SortType } from '@/types/types';
 
+interface SortOption {
+  label: string;
+  value: SortType;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  description: string;
+}
+
 interface SortModalProps {
   visible: boolean;
   sortOrder: SortType;

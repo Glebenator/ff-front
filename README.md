@@ -1,50 +1,99 @@
-# Welcome to your Expo app 👋
+# FridgeFriend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+FridgeFriend is a smart kitchen companion app designed to help users track ingredients, manage expiry dates, and reduce food waste. Built with React Native and Expo, it works on both iOS and Android platforms.
 
-## Get started
+![FridgeFriend Logo](https://via.placeholder.com/150/53D181/FFFFFF?text=FridgeFriend)
 
-1. Install dependencies
+## 🌟 Features
 
+### 📱 Core Features
+- **Ingredient Tracking**: Easily add, update, and manage ingredients in your fridge
+- **Expiration Management**: Track expiry dates and get alerts for items expiring soon
+- **Category Organization**: Organize ingredients by categories for quick access
+- **Search & Filter**: Quickly find ingredients using search and filter options
+- **Recipe Suggestions**: Get recipe ideas based on available ingredients
+
+### 📋 Key Screens
+- **Home**: Overview dashboard showing expiring items and quick actions
+- **My Fridge**: Main inventory management with filtering and sorting options
+- **Sessions**: Track and manage incoming/outgoing ingredient sessions
+- **Recipes**: Discover recipes based on available ingredients with customizable preferences
+
+## 🏗️ Technology Stack
+
+- **Framework**: React Native with Expo
+- **Routing**: Expo Router
+- **Storage**: SQLite (mobile) with AsyncStorage for preferences
+- **Notifications**: Expo Notifications for expiry alerts
+- **UI Components**: Custom components with Expo Vector Icons
+
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or newer)
+- Yarn or npm
+- Expo CLI (`npm install -g expo-cli`)
+- iOS Simulator (for Mac users) or Android Emulator
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Glebenator/ff-front.git
+   cd ff-front
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
+   # or
+   yarn install
    ```
 
-2. Start the app
-
+3. Start the development server:
    ```bash
-    npx expo start
+   npm start
+   # or
+   yarn start
    ```
 
-In the output, you'll find options to open the app in a
+4. Run on a device or emulator:
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
+   - Or scan the QR code with the Expo Go app on your physical device
+   
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### Development Scripts
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- `npm start` - Start the Expo development server with tunneling
+- `npm run ios` - Run on iOS simulator
+- `npm run android` - Run on Android emulator
+- `npm run web` - Run in web browser (limited functionality)
+- `npm run lint` - Run linting
 
-## Get a fresh project
+## 📱 Mobile App Features
 
-When you're ready, run:
+### My Fridge Screen
+- View all ingredients with expiry dates
+- Filter by category or expiry status
+- Search for specific ingredients
+- Sort by name, expiry date, or date added
+- Add new ingredients with detailed information
 
-```bash
-npm run reset-project
-```
+### Sessions
+- Track and approve/reject scanning sessions
+- Edit detected items before approving
+- View history of past sessions
+- Manage incoming and outgoing items
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Recipes
+- Get recipe suggestions based on available ingredients
+- Filter by dietary preferences and meal types
+- Save favorite recipes
+- View detailed cooking instructions and nutritional information
 
-## Learn more
+## 🤝 Contributing
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Contributions are welcome! Please feel free to submit a Pull Request.

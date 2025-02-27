@@ -26,9 +26,7 @@ export default function CategoryFilters({
     'Condiments': 'flask-outline',
     'Leftovers': 'fast-food-outline',
     'Deli': 'pizza-outline',
-    'Eggs': 'egg-outline',
     'Desserts': 'ice-cream-outline',
-    'Frozen': 'snow-outline',
     'Other': 'ellipsis-horizontal-outline'
   };
 

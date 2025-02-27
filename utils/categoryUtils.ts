@@ -19,7 +19,6 @@ export class CategoryUtils {
     Condiments: ['ketchup', 'mustard', 'mayo', 'sauce', 'dressing', 'jam', 'syrup', 'honey'],
     Leftovers: ['container', 'meal', 'takeout', 'leftover', 'dinner', 'lunch'],
     Deli: ['sandwich', 'salad', 'cold cut', 'sliced', 'prepared'],
-    Eggs: ['egg', 'dozen', 'carton'],
     Desserts: ['pudding', 'jello', 'cake', 'pie', 'ice cream'],
     Frozen: ['pizza', 'ice cream', 'frozen', 'fries', 'vegetables', 'meal']
   };
@@ -36,7 +35,6 @@ export class CategoryUtils {
     Deli: 5,            // 5 days for deli items
     Eggs: 21,           // 21 days for eggs
     Desserts: 5,        // 5 days for refrigerated desserts
-    Frozen: 90,         // 90 days for frozen items
     Other: 7            // 7 days default for uncategorized items
   };
 
