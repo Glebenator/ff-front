@@ -1,107 +1,89 @@
-// SearchBar.tsx (Integrated with compact sort control)
 import React from 'react';
-import { View, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 
 interface SearchBarProps {
-    value: string;
-    onChangeText: (text: string) => void;
-    onClear: () => void;
-    sortIndicatorText?: string;
-    onSortPress?: () => void;
+  value: string;
+  onChangeText: (text: string) => void;
+  onClear: () => void;
+  sortIndicatorText: string;
+  onSortPress: () => void;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ 
-    value, 
-    onChangeText, 
-    onClear, 
-    sortIndicatorText, 
-    onSortPress 
-}) => {
-    return (
-        <View style={styles.searchBarContainer}>
-            {/* Left side: Sort button (icon only) */}
-            {onSortPress && (
-                <Pressable 
-                    style={styles.sortButton} 
-                    onPress={onSortPress}
-                >
-                    <Ionicons 
-                        name="options-outline" 
-                        size={20} 
-                        color={theme.colors.text.tertiary} 
-                    />
-                </Pressable>
-            )}
-            
-            {/* Middle: Search icon and input */}
-            <View style={styles.searchSection}>
-                <Ionicons 
-                    name="search" 
-                    size={20} 
-                    color={theme.colors.text.tertiary} 
-                    style={styles.searchIcon} 
-                />
-                
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search ingredients..."
-                    placeholderTextColor={theme.colors.text.tertiary}
-                    value={value}
-                    onChangeText={onChangeText}
-                />
-            </View>
-            
-            {/* Right side: Clear button (when there's text) */}
-            {value.length > 0 && (
-                <Pressable 
-                    onPress={onClear} 
-                    style={styles.clearButton}
-                >
-                    <Ionicons 
-                        name="close-circle" 
-                        size={20} 
-                        color={theme.colors.text.tertiary} 
-                    />
-                </Pressable>
-            )}
-        </View>
-    );
-};
+export default function SearchBar({
+  value,
+  onChangeText,
+  onClear,
+  sortIndicatorText,
+  onSortPress,
+}: SearchBarProps) {
+  return (
+    <View style={styles.searchContainer}>
+      <View style={styles.inputContainer}>
+        <Ionicons
+          name="search"
+          size={18}
+          color={theme.colors.text.secondary}
+          style={styles.searchIcon}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Search..."
+          placeholderTextColor={theme.colors.text.secondary}
+          value={value}
+          onChangeText={onChangeText}
+        />
+        {value.length > 0 && (
+          <TouchableOpacity onPress={onClear} style={styles.clearButton}>
+            <Ionicons name="close-circle" size={18} color={theme.colors.text.secondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+      <TouchableOpacity onPress={onSortPress} style={styles.sortButton}>
+        <Text style={styles.sortText}>{sortIndicatorText}</Text>
+        <Ionicons name="swap-vertical" size={18} color={theme.colors.text.primary} />
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-    searchBarContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.colors.background.secondary,
-        borderRadius: theme.borderRadius.lg,
-        height: 44,
-        paddingHorizontal: theme.spacing.sm,
-    },
-    sortButton: {
-        padding: theme.spacing.sm,
-        marginRight: 4,
-    },
-    searchSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    searchIcon: {
-        marginLeft: 4,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: theme.fontSize.md,
-        color: theme.colors.text.primary,
-        height: '100%',
-        paddingLeft: theme.spacing.sm,
-    },
-    clearButton: {
-        padding: theme.spacing.sm,
-        marginLeft: 4,
-    },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  inputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background.tertiary,
+    borderRadius: theme.borderRadius.sm,
+    paddingHorizontal: theme.spacing.sm,
+    height: 40,
+  },
+  searchIcon: {
+    marginRight: theme.spacing.xs,
+  },
+  input: {
+    flex: 1,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text.primary, // This ensures input text is black/primary
+    height: '100%',
+  },
+  clearButton: {
+    padding: theme.spacing.xs,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: theme.spacing.sm,
+    padding: theme.spacing.xs,
+  },
+  sortText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.primary,
+    marginRight: theme.spacing.xs,
+  },
 });
-
-export default SearchBar;

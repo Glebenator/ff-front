@@ -1,4 +1,4 @@
-import { View, Pressable, Text, StyleSheet } from 'react-native';
+import { View, Pressable, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { type CategoryIconMapping } from '@/types/types';
@@ -19,24 +19,49 @@ export default function CategoryFilters({
     'all': 'apps-outline',
     'Dairy': 'water-outline',
     'Meat': 'restaurant-outline',
+    'Seafood': 'fish-outline',
     'Vegetables': 'leaf-outline',
     'Fruits': 'nutrition-outline',
     'Beverages': 'cafe-outline',
     'Condiments': 'flask-outline',
+    'Leftovers': 'fast-food-outline',
+    'Deli': 'pizza-outline',
+    'Eggs': 'egg-outline',
+    'Desserts': 'ice-cream-outline',
+    'Frozen': 'snow-outline',
     'Other': 'ellipsis-horizontal-outline'
   };
 
-  // Ensure "Other" is included in the displayed categories
-  const displayCategories = categories.includes('Other') ? 
-    categories : 
-    [...categories, 'Other'];
+  // Ensure "All" is at the beginning and "Other" is at the end, but avoid duplicates
+  let displayCategories: string[] = [];
+  
+  // First add "all" if it's not already in the categories
+  if (!categories.includes('all')) {
+    displayCategories.push('all');
+  }
+  
+  // Then add all the categories without duplicates
+  categories.forEach(category => {
+    if (!displayCategories.includes(category)) {
+      displayCategories.push(category);
+    }
+  });
+  
+  // Finally add "Other" if it's not already in the list
+  if (!displayCategories.includes('Other')) {
+    displayCategories.push('Other');
+  }
 
   return (
     <View style={styles.categoryFilterContainer}>
-      <View style={styles.categoryGrid}>
-        {displayCategories.map(category => (
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollViewContent}
+      >
+        {displayCategories.map((category, index) => (
           <Pressable
-            key={category}
+            key={`category-${category}-${index}`}
             style={[
               styles.categoryButton,
               selectedCategory === category && styles.categoryButtonActive,
@@ -45,7 +70,7 @@ export default function CategoryFilters({
           >
             <Ionicons 
               name={categoryIcons[category] || 'help-outline'} 
-              size={22} 
+              size={18} 
               color={selectedCategory === category ? 
                 theme.colors.background.primary : 
                 theme.colors.text.primary} 
@@ -55,44 +80,45 @@ export default function CategoryFilters({
                 styles.categoryButtonText,
                 selectedCategory === category && styles.categoryButtonTextActive,
               ]}
+              numberOfLines={1}
             >
               {category === 'all' ? 'All' : category}
             </Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   categoryFilterContainer: {
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
   },
-  categoryGrid: {
+  scrollViewContent: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.xs,
   },
   categoryButton: {
-    width: '31%',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.xxs,
+    paddingVertical: theme.spacing.xs,
     paddingHorizontal: theme.spacing.sm,
     backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    marginRight: theme.spacing.xs,
+    minWidth: 70,
+    maxWidth: 90,
   },
   categoryButtonActive: {
     backgroundColor: theme.colors.primary,
   },
   categoryButtonText: {
-    fontSize: theme.fontSize.sm,
+    fontSize: theme.fontSize.xs,
     color: theme.colors.text.primary,
+    textAlign: 'center',
   },
   categoryButtonTextActive: {
     color: theme.colors.background.primary,

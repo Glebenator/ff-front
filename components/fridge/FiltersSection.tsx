@@ -43,7 +43,7 @@ export default function FiltersSection({
 
   const heightInterpolate = animation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 280],
+    outputRange: [0, 140],
   });
 
   const getSortIndicatorText = () => {
@@ -86,6 +86,17 @@ export default function FiltersSection({
         />
       </Pressable>
 
+      {/* Search Bar - Now outside of collapsible area */}
+      <View style={styles.searchBarContainer}>
+        <SearchBar
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          onClear={() => setSearchTerm('')}
+          sortIndicatorText={getSortIndicatorText()}
+          onSortPress={onSortPress}
+        />
+      </View>
+
       <Animated.View style={{ height: heightInterpolate, overflow: 'hidden' }}>
         <>
           {/* Expiry Date Filters */}
@@ -98,17 +109,6 @@ export default function FiltersSection({
             categories={categories}
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
-          />
-
-          <View style={styles.filterSeparator} />
-
-          {/* Search Bar */}
-          <SearchBar
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            onClear={() => setSearchTerm('')}
-            sortIndicatorText={getSortIndicatorText()}
-            onSortPress={onSortPress}
           />
         </>
       </Animated.View>
@@ -144,6 +144,9 @@ const styles = StyleSheet.create({
   filterSeparator: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.primary,
+    marginVertical: theme.spacing.xs,
+  },
+  searchBarContainer: {
     marginVertical: theme.spacing.xs,
   },
 });
