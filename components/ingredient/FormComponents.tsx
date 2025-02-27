@@ -20,7 +20,11 @@ export function FormField({
     placeholder, 
     multiline = false,
     numberOfLines = 1,
-    error
+    error,
+    onFocus,
+    returnKeyType,
+    onSubmitEditing,
+    blurOnSubmit
 }: {
     label: string;
     value: string;
@@ -29,6 +33,10 @@ export function FormField({
     multiline?: boolean;
     numberOfLines?: number;
     error?: string;
+    onFocus?: () => void;
+    returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send' | 'default';
+    onSubmitEditing?: () => void;
+    blurOnSubmit?: boolean;
 }) {
     return (
         <View style={sharedStyles.inputGroup}>
@@ -46,6 +54,10 @@ export function FormField({
                 multiline={multiline}
                 numberOfLines={numberOfLines}
                 textAlignVertical={multiline ? "top" : "center"}
+                onFocus={onFocus}
+                returnKeyType={returnKeyType}
+                onSubmitEditing={onSubmitEditing}
+                blurOnSubmit={blurOnSubmit}
             />
             {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
@@ -221,10 +233,14 @@ export function DateSelector({
 
 export function NotesField({
     value,
-    onChangeText
+    onChangeText,
+    onFocus,
+    onSubmitEditing
 }: {
     value: string;
     onChangeText: (text: string) => void;
+    onFocus?: () => void;
+    onSubmitEditing?: () => void;
 }) {
     return (
         <FormField
@@ -234,6 +250,10 @@ export function NotesField({
             placeholder="Add any additional notes (optional)"
             multiline
             numberOfLines={4}
+            onFocus={onFocus}
+            returnKeyType="done"
+            onSubmitEditing={onSubmitEditing}
+            blurOnSubmit={true}
         />
     );
 }
@@ -252,11 +272,11 @@ export function FormActions({
     return (
         <View style={sharedStyles.formActions}>
             {isEditing ? (
-                <View style={sharedStyles.buttonContainer}>
+                <View style={styles.buttonContainer}>
                     <Pressable
                         style={[
-                            sharedStyles.button, 
-                            { backgroundColor: theme.colors.status.error },
+                            styles.actionButton, 
+                            styles.deleteButton,
                             isSubmitting && styles.disabledButton
                         ]}
                         onPress={onDelete}
@@ -267,7 +287,7 @@ export function FormActions({
                         ) : (
                             <>
                                 <Ionicons name="trash-outline" size={24} color="white" />
-                                <Text style={[sharedStyles.buttonText, { color: 'white' }]}>
+                                <Text style={styles.buttonText}>
                                     Delete
                                 </Text>
                             </>
@@ -275,8 +295,8 @@ export function FormActions({
                     </Pressable>
                     <Pressable
                         style={[
-                            sharedStyles.button, 
-                            { flex: 1 },
+                            styles.actionButton, 
+                            styles.saveButton,
                             isSubmitting && styles.disabledButton
                         ]}
                         onPress={onSubmit}
@@ -285,15 +305,15 @@ export function FormActions({
                         {isSubmitting ? (
                             <ActivityIndicator color="white" size="small" />
                         ) : (
-                            <Text style={sharedStyles.buttonText}>Save Changes</Text>
+                            <Text style={styles.buttonText}>Save Changes</Text>
                         )}
                     </Pressable>
                 </View>
             ) : (
                 <Pressable
                     style={[
-                        sharedStyles.button, 
-                        { width: '100%' },
+                        styles.actionButton,
+                        styles.fullWidthButton,
                         isSubmitting && styles.disabledButton
                     ]}
                     onPress={onSubmit}
@@ -302,7 +322,7 @@ export function FormActions({
                     {isSubmitting ? (
                         <ActivityIndicator color="white" size="small" />
                     ) : (
-                        <Text style={sharedStyles.buttonText}>Add Ingredient</Text>
+                        <Text style={styles.buttonText}>Add Ingredient</Text>
                     )}
                 </Pressable>
             )}
@@ -383,5 +403,38 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.7,
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        gap: theme.spacing.md,
+    },
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: theme.spacing.sm,
+        paddingHorizontal: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
+        minHeight: 50,
+    },
+    saveButton: {
+        backgroundColor: theme.colors.primary,
+        flex: 1,
+    },
+    deleteButton: {
+        backgroundColor: theme.colors.status.error,
+        minWidth: 100,
+    },
+    fullWidthButton: {
+        backgroundColor: theme.colors.primary,
+        width: '100%',
+    },
+    buttonText: {
+        color: 'white',
+        fontSize: theme.fontSize.md,
+        fontWeight: '600',
+        marginLeft: theme.spacing.xs,
     },
 });

@@ -1,5 +1,16 @@
-import { useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { 
+    View, 
+    Text, 
+    ScrollView, 
+    Platform, 
+    Alert, 
+    ActivityIndicator, 
+    StyleSheet, 
+    KeyboardAvoidingView,
+    Keyboard,
+    TextInput
+} from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ingredientDb } from '@/services/database/ingredientDb';
 import { Ingredient, IngredientFormData } from '@/types/types';
@@ -30,6 +41,8 @@ export default function IngredientFormScreen() {
     });
     const [formErrors, setFormErrors] = useState<Partial<Record<keyof IngredientFormData, string>>>({});
     const categories = sessionManager.getAvailableCategories();
+    const scrollViewRef = useRef<ScrollView>(null);
+    const notesInputRef = useRef<TextInput>(null);
 
     // Load ingredient data when editing
     useEffect(() => {
@@ -145,6 +158,28 @@ export default function IngredientFormScreen() {
         );
     }, [id, isEditing]);
 
+    // Handle automatic scrolling when notes field is focused
+    const handleNotesFieldFocus = () => {
+        // Allow layout to update before scrolling
+        setTimeout(() => {
+            notesInputRef.current?.measure((_fx, _fy, _width, _height, _px, py) => {
+                scrollViewRef.current?.scrollTo({
+                    y: py,
+                    animated: true
+                });
+            });
+        }, 100);
+    };
+
+    // Handle "Done" button press on keyboard for notes field
+    const handleNotesSubmit = () => {
+        Keyboard.dismiss();
+        // If form is valid and not submitting, trigger submit
+        if (!isSubmitting && Object.keys(validateIngredientForm(formData)).length === 0) {
+            handleSubmit();
+        }
+    };
+
     if (Platform.OS === 'web') {
         return (
             <View style={sharedStyles.container}>
@@ -177,10 +212,18 @@ export default function IngredientFormScreen() {
                     },
                 }}
             />
-            <View style={sharedStyles.container}>
+            <KeyboardAvoidingView
+                style={styles.container}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
+            >
                 <ScrollView 
-                    contentContainerStyle={sharedStyles.form}
+                    ref={scrollViewRef}
+                    style={styles.scrollView}
+                    contentContainerStyle={styles.scrollViewContent}
                     keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={true}
+                    keyboardDismissMode="interactive"
                 >
                     <View style={sharedStyles.formContent}>
                         <FormField
@@ -189,6 +232,7 @@ export default function IngredientFormScreen() {
                             onChangeText={(text) => updateField('name', text)}
                             placeholder="Enter ingredient name"
                             error={formErrors.name}
+                            returnKeyType="next"
                         />
 
                         <FormField
@@ -197,6 +241,7 @@ export default function IngredientFormScreen() {
                             onChangeText={(text) => updateField('quantity', text)}
                             placeholder="Enter quantity (e.g., 500g, 2 pieces)"
                             error={formErrors.quantity}
+                            returnKeyType="next"
                         />
 
                         <CategorySelector
@@ -232,20 +277,45 @@ export default function IngredientFormScreen() {
                             isEditing={isEditing}
                         />
 
-                        <NotesField
-                            value={formData.notes}
-                            onChangeText={(text) => updateField('notes', text)}
-                        />
+                        <View ref={notesInputRef} collapsable={false}>
+                            <NotesField
+                                value={formData.notes}
+                                onChangeText={(text) => updateField('notes', text)}
+                                onFocus={handleNotesFieldFocus}
+                                onSubmitEditing={handleNotesSubmit}
+                            />
+                        </View>
                     </View>
 
-                    <FormActions
-                        isEditing={isEditing}
-                        isSubmitting={isSubmitting}
-                        onSubmit={handleSubmit}
-                        onDelete={handleDelete}
-                    />
+                    <View style={styles.actionContainer}>
+                        <FormActions
+                            isEditing={isEditing}
+                            isSubmitting={isSubmitting}
+                            onSubmit={handleSubmit}
+                            onDelete={handleDelete}
+                        />
+                    </View>
                 </ScrollView>
-            </View>
+            </KeyboardAvoidingView>
         </>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: theme.colors.background.primary,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollViewContent: {
+        flexGrow: 1,
+        padding: theme.spacing.lg,
+        paddingBottom: Platform.OS === 'ios' ? 120 : theme.spacing.xl * 2, // Extra padding at bottom for keyboard
+    },
+    actionContainer: {
+        marginTop: theme.spacing.xl,
+        marginBottom: Platform.OS === 'ios' ? theme.spacing.xl * 2 : theme.spacing.xl,
+    }
+});
