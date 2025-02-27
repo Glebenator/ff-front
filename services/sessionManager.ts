@@ -1,50 +1,38 @@
-// services/sessionManager.ts
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mockMqttService, type FridgeSession } from './mqtt/mockMqttService';
-import { ingredientDb, type Ingredient } from '@/services/database/ingredientDb';
+import { ingredientDb } from '@/services/database/ingredientDb';
 import { toastStore } from '@/services/toastStore';
-
-const SESSIONS_STORAGE_KEY = 'fridge_sessions';
-
-// Extend the FridgeItem interface to include editable fields
-export interface EditableFridgeItem {
-  name: string;
-  direction: 'in' | 'out';
-  confidence: number;
-  quantity: number;
-  expiryDate?: string;
-  category?: string;
-  notes?: string;
-}
-
-export interface EditableSession extends Omit<FridgeSession, 'items'> {
-  items: EditableFridgeItem[];
-}
+import { EditableFridgeItem, EditableSession, SessionStatus } from '@/types/session';
+import { CategoryUtils } from '@/utils/categoryUtils';
+import { ExpiryUtils } from '@/utils/expiryUtils';
+import { STORAGE_KEYS } from '@/constants/storage';
 
 class SessionManager {
   private sessions: EditableSession[] = [];
   private subscribers: ((sessions: EditableSession[]) => void)[] = [];
-  private defaultCategories = [
-    'Dairy',
-    'Meat',
-    'Vegetables',
-    'Fruits',
-    'Beverages',
-    'Condiments',
-    'Other'
-  ];
+  private userCategories: string[] = [];
 
   constructor() {
-    this.loadSessions();
+    this.initialize();
+  }
+
+  private async initialize() {
+    await Promise.all([
+      this.loadSessions(),
+      this.loadCategories()
+    ]);
+    
     if (Platform.OS !== 'web') {
       mockMqttService.subscribe(this.handleNewSession.bind(this));
     }
   }
 
+  // ===== Session Storage Methods =====
+  
   private async loadSessions() {
     try {
-      const storedSessions = await AsyncStorage.getItem(SESSIONS_STORAGE_KEY);
+      const storedSessions = await AsyncStorage.getItem(STORAGE_KEYS.SESSIONS);
       if (storedSessions) {
         this.sessions = JSON.parse(storedSessions);
         this.notifySubscribers();
@@ -56,31 +44,32 @@ class SessionManager {
 
   private async saveSessions() {
     try {
-      await AsyncStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(this.sessions));
+      await AsyncStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(this.sessions));
     } catch (error) {
       console.error('Error saving sessions:', error);
     }
   }
+  
+  private async loadCategories() {
+    this.userCategories = await CategoryUtils.loadUserCategories();
+  }
 
+  // ===== Session Management Methods =====
+  
   private handleNewSession(session: FridgeSession) {
-    // Convert regular session to editable session
     const editableSession: EditableSession = {
       ...session,
       items: session.items.map(item => ({
         ...item,
         quantity: item.quantity || 1,
-        category: this.inferCategory(item.name),
-        expiryDate: this.calculateDefaultExpiry(item.name)
+        category: CategoryUtils.inferCategory(item.name),
+        expiryDate: ExpiryUtils.calculateDefaultExpiry(item.name)
       }))
     };
 
     this.sessions.unshift(editableSession);
     this.saveSessions();
     this.notifySubscribers();
-  }
-
-  private notifySubscribers() {
-    this.subscribers.forEach(callback => callback([...this.sessions]));
   }
 
   async approveSession(sessionId: string, items: EditableFridgeItem[]) {
@@ -94,67 +83,78 @@ class SessionManager {
       status: 'approved'
     };
 
-    const changes = {
-      added: 0,
-      removed: 0,
-    };
-
+    const changes = await this.processSessionItems(items);
+    
+    await this.saveSessions();
+    this.notifySubscribers();
+    return changes;
+  }
+  
+  private async processSessionItems(items: EditableFridgeItem[]) {
+    const changes = { added: 0, removed: 0 };
+    
     try {
-      // Process all items
       for (const item of items) {
         if (item.direction === 'in') {
-          // Add new item
-          await ingredientDb.add({
-            name: item.name,
-            quantity: item.quantity.toString(),
-            expiryDate: item.expiryDate || this.calculateDefaultExpiry(item.name),
-            category: item.category || this.inferCategory(item.name),
-            notes: item.notes,
-          });
+          await this.processIncomingItem(item);
           changes.added++;
         } else {
-          // Handle removal
-          const existingItems = await ingredientDb.getAll();
-          const matchingItems = existingItems.filter(
-            i => i.name.toLowerCase() === item.name.toLowerCase()
-          );
-
-          let remainingToRemove = item.quantity;
-
-          for (const matchingItem of matchingItems) {
-            const currentQuantity = parseInt(matchingItem.quantity) || 1;
-            
-            if (remainingToRemove >= currentQuantity) {
-              // Remove entire item
-              await ingredientDb.delete(matchingItem.id!);
-              remainingToRemove -= currentQuantity;
-              changes.removed += currentQuantity;
-            } else {
-              // Partially reduce quantity
-              const newQuantity = currentQuantity - remainingToRemove;
-              await ingredientDb.update(matchingItem.id!, {
-                quantity: newQuantity.toString()
-              });
-              changes.removed += remainingToRemove;
-              remainingToRemove = 0;
-            }
-
-            if (remainingToRemove <= 0) break;
-          }
-
-          if (remainingToRemove > 0) {
-            toastStore.warning(`Could not remove all requested ${item.name} (insufficient quantity)`);
-          }
+          const removedCount = await this.processOutgoingItem(item);
+          changes.removed += removedCount;
         }
       }
-
-      await this.saveSessions();
-      this.notifySubscribers();
       return changes;
     } catch (error) {
-      console.error('Error processing session:', error);
+      console.error('Error processing session items:', error);
       throw error;
     }
+  }
+  
+  private async processIncomingItem(item: EditableFridgeItem) {
+    await ingredientDb.add({
+      name: item.name,
+      quantity: item.quantity.toString(),
+      expiryDate: item.expiryDate || ExpiryUtils.calculateDefaultExpiry(item.name),
+      category: item.category || CategoryUtils.inferCategory(item.name),
+      notes: item.notes,
+    });
+  }
+  
+  private async processOutgoingItem(item: EditableFridgeItem) {
+    const existingItems = await ingredientDb.getAll();
+    const matchingItems = existingItems.filter(
+      i => i.name.toLowerCase() === item.name.toLowerCase()
+    );
+
+    let remainingToRemove = item.quantity;
+    let removedCount = 0;
+
+    for (const matchingItem of matchingItems) {
+      const currentQuantity = parseInt(matchingItem.quantity) || 1;
+      
+      if (remainingToRemove >= currentQuantity) {
+        // Remove entire item
+        await ingredientDb.delete(matchingItem.id!);
+        remainingToRemove -= currentQuantity;
+        removedCount += currentQuantity;
+      } else {
+        // Partially reduce quantity
+        const newQuantity = currentQuantity - remainingToRemove;
+        await ingredientDb.update(matchingItem.id!, {
+          quantity: newQuantity.toString()
+        });
+        removedCount += remainingToRemove;
+        remainingToRemove = 0;
+      }
+
+      if (remainingToRemove <= 0) break;
+    }
+
+    if (remainingToRemove > 0) {
+      toastStore.warning(`Could not remove all requested ${item.name} (insufficient quantity)`);
+    }
+    
+    return removedCount;
   }
 
   async rejectSession(sessionId: string) {
@@ -170,7 +170,7 @@ class SessionManager {
     this.notifySubscribers();
   }
 
-  async clearSessions(status: 'pending' | 'approved' | 'rejected') {
+  async clearSessions(status: SessionStatus) {
     this.sessions = this.sessions.filter(session => session.status !== status);
     await this.saveSessions();
     this.notifySubscribers();
@@ -214,6 +214,8 @@ class SessionManager {
     this.notifySubscribers();
   }
 
+  // ===== Subscription Management =====
+  
   subscribe(callback: (sessions: EditableSession[]) => void) {
     this.subscribers.push(callback);
     callback([...this.sessions]);
@@ -221,60 +223,60 @@ class SessionManager {
       this.subscribers = this.subscribers.filter(cb => cb !== callback);
     };
   }
+  
+  private notifySubscribers() {
+    this.subscribers.forEach(callback => callback([...this.sessions]));
+  }
 
+  // ===== Category Management =====
+  
   getAvailableCategories(): string[] {
-    return this.defaultCategories;
-  }
-
-  private calculateDefaultExpiry(itemName: string): string {
-    const today = new Date();
-    const daysToAdd = this.getDefaultExpiryDays(itemName);
-    today.setDate(today.getDate() + daysToAdd);
-    return today.toISOString().split('T')[0];
-  }
-
-  private getDefaultExpiryDays(itemName: string): number {
-    const defaultExpiries: { [key: string]: number } = {
-      milk: 7,
-      eggs: 21,
-      cheese: 14,
-      yogurt: 14,
-      butter: 30,
-      chicken: 2,
-      beef: 3,
-      fish: 2,
-      carrots: 14,
-      apples: 14,
-      lettuce: 7,
-      tomatoes: 7,
-      bread: 5,
-      juice: 7
-    };
-
-    return defaultExpiries[itemName.toLowerCase()] || 7;
-  }
-
-  private inferCategory(itemName: string): string {
-    const lowerName = itemName.toLowerCase();
+    const defaultCategories = CategoryUtils.getDefaultCategories();
     
-    const categoryMappings: { [key: string]: string[] } = {
-      Dairy: ['milk', 'cheese', 'yogurt', 'butter', 'cream'],
-      Meat: ['chicken', 'beef', 'pork', 'fish', 'salmon'],
-      Vegetables: ['carrot', 'lettuce', 'tomato', 'cucumber', 'pepper'],
-      Fruits: ['apple', 'banana', 'orange', 'grape', 'berry'],
-      Beverages: ['juice', 'soda', 'water', 'tea', 'coffee'],
-      Condiments: ['ketchup', 'mustard', 'mayo', 'sauce', 'dressing']
-    };
-
-    for (const [category, keywords] of Object.entries(categoryMappings)) {
-      if (keywords.some(keyword => lowerName.includes(keyword))) {
-        return category;
+    // Add user categories that aren't already in the default list
+    this.userCategories.forEach(category => {
+      if (!defaultCategories.includes(category)) {
+        defaultCategories.push(category);
       }
-    }
+    });
+    
+    return defaultCategories;
+  }
 
-    return 'Other';
+  async addCategory(category: string): Promise<void> {
+    if (!category.trim()) return;
+    
+    const trimmedCategory = category.trim();
+    const currentCategories = this.getAvailableCategories();
+    
+    if (!currentCategories.includes(trimmedCategory) && 
+        !this.userCategories.includes(trimmedCategory)) {
+      this.userCategories.push(trimmedCategory);
+      await CategoryUtils.saveUserCategories(this.userCategories);
+    }
+  }
+
+  // ===== Storage Utility Methods =====
+  
+  getItem(key: string): string | null {
+    // This is a synchronous version just for compatibility.
+    try {
+      return AsyncStorage.getItem(key) as unknown as string;
+    } catch (error) {
+      console.error('Error getting item:', error);
+      return null;
+    }
+  }
+
+  setItem(key: string, value: string): void {
+    try {
+      AsyncStorage.setItem(key, value);
+    } catch (error) {
+      console.error('Error setting item:', error);
+    }
   }
 }
 
 // Export singleton instance
 export const sessionManager = new SessionManager();
+export * from '@/types/session';

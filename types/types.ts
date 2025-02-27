@@ -50,3 +50,18 @@ export interface QuickActionButtonProps {
   color: string;
   onPress: () => void;
 }
+
+// Form validation types
+export interface ValidationError {
+  [key: string]: string;
+}
+
+// Ingredient form data type
+export interface IngredientFormData {
+  name: string;
+  quantity: string;
+  category: string;
+  notes: string;
+  expiryDate: Date;
+  debugDate?: string;
+}
