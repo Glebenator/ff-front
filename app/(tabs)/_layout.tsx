@@ -108,6 +108,15 @@ export default function TabLayout() {
                     ),
                 }}
             />
+            <Tabs.Screen
+                name="mqtt"
+                options={{
+                    title: 'MQTT Test',
+                    tabBarIcon: ({ color, focused }) => (
+                        <TabIcon name="pulse-outline" focused={focused} color={color} />
+                    ),
+                }}
+            />
         </Tabs>
     );
 }
