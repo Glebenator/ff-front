@@ -1,5 +1,5 @@
 // services/toastStore.ts
-type ToastType = 'success' | 'error' | 'info';
+type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 interface Toast {
   id: string;
@@ -58,6 +58,10 @@ class ToastStore {
 
   info(message: string) {
     this.show(message, 'info');
+  }
+
+  warning(message: string) {
+    this.show(message, 'warning');
   }
 }
 

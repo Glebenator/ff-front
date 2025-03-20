@@ -1,6 +1,9 @@
+// services/sessionManager.ts
+// Session management for handling MQTT fridge sessions
+
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { mockMqttService, type FridgeSession } from './mqtt/mockMqttService';
+import { mqttService, FridgeSession, FridgeItem } from '@/services/mqtt/mqttService';
 import { ingredientDb } from '@/services/database/ingredientDb';
 import { toastStore } from '@/services/toastStore';
 import { EditableFridgeItem, EditableSession, SessionStatus } from '@/types/session';
@@ -24,7 +27,15 @@ class SessionManager {
     ]);
     
     if (Platform.OS !== 'web') {
-      mockMqttService.subscribe(this.handleNewSession.bind(this));
+      // Subscribe to MQTT sessions
+      mqttService.subscribeToSessions(this.handleNewSession.bind(this));
+      
+      // Try to connect to the MQTT broker
+      try {
+        await mqttService.connect();
+      } catch (error) {
+        console.error('Failed to connect to MQTT broker:', error);
+      }
     }
   }
 

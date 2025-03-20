@@ -1,10 +1,9 @@
-import { FridgeSession } from '../services/mqtt/mockMqttService';
+// types/session.ts
+// Type definitions for fridge sessions
 
-export interface EditableFridgeItem {
-  name: string;
-  direction: 'in' | 'out';
-  confidence: number;
-  quantity: number;
+import { FridgeSession, FridgeItem } from '../services/mqtt/mqttService';
+
+export interface EditableFridgeItem extends FridgeItem {
   expiryDate?: string;
   category?: string;
   notes?: string;

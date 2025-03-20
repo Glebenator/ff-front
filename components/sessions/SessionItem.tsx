@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
-import { type EditableFridgeItem } from '@/services/sessionManager';
+import { type EditableFridgeItem } from '@/types/session';
 import { SessionStatus } from './FilterHeader';
 
 interface SessionItemProps {
@@ -20,8 +20,32 @@ const SessionItem: React.FC<SessionItemProps> = ({
 }) => {
   return (
     <View style={styles.itemRow}>
+      {/* Optional image if provided by RPi5 camera */}
+      {item.imageUrl && (
+        <Image 
+          source={{ uri: item.imageUrl }} 
+          style={styles.itemImage}
+          resizeMode="cover"
+        />
+      )}
+      
       <View style={styles.itemInfo}>
         <Text style={styles.itemName}>{item.name}</Text>
+        
+        {/* Show barcode if available */}
+        {item.barcode && (
+          <View style={styles.barcodeContainer}>
+            <Ionicons name="barcode-outline" size={16} color={theme.colors.text.secondary} />
+            <Text style={styles.barcodeText}>{item.barcode}</Text>
+          </View>
+        )}
+        
+        {/* Show confidence if below threshold */}
+        {item.confidence < 0.8 && (
+          <Text style={styles.lowConfidence}>
+            Low confidence detection ({Math.round(item.confidence * 100)}%)
+          </Text>
+        )}
       </View>
 
       <View style={styles.itemDetails}>
@@ -63,6 +87,12 @@ const styles = StyleSheet.create({
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.md,
   },
+  itemImage: {
+    width: 50,
+    height: 50,
+    borderRadius: theme.borderRadius.md,
+    marginRight: theme.spacing.sm,
+  },
   itemInfo: {
     flex: 1,
   },
@@ -70,6 +100,21 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     fontWeight: '500',
     color: theme.colors.text.primary,
+  },
+  barcodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  barcodeText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.secondary,
+    marginLeft: 4,
+  },
+  lowConfidence: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.status.warning,
+    marginTop: 2,
   },
   itemDetails: {
     flexDirection: 'row',

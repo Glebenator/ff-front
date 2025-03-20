@@ -1,6 +1,8 @@
 // hooks/useSessions.ts
+// Hook for managing sessions in the application
+
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { type FridgeSession, type FridgeItem } from '@/services/mqtt/mockMqttService';
+import { FridgeSession, FridgeItem } from '@/services/mqtt/mqttService';
 import { sessionManager } from '@/services/sessionManager';
 import { toastStore } from '@/services/toastStore';
 
@@ -36,7 +38,6 @@ export const useSessions = () => {
       if (changes) {
         let message = [];
         if (changes.added > 0) message.push(`${changes.added} items added`);
-        if (changes.updated > 0) message.push(`${changes.updated} items updated`);
         if (changes.removed > 0) message.push(`${changes.removed} items removed`);
         
         toastStore.success(message.join(', '));
