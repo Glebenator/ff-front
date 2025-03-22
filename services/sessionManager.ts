@@ -1,6 +1,4 @@
 // services/sessionManager.ts
-// Session management for handling MQTT fridge sessions
-
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mqttService, FridgeSession, FridgeItem } from '@/services/mqtt/mqttService';
@@ -15,6 +13,8 @@ class SessionManager {
   private sessions: EditableSession[] = [];
   private subscribers: ((sessions: EditableSession[]) => void)[] = [];
   private userCategories: string[] = [];
+  private processedSessionIds: Set<string> = new Set();
+  private PROCESSED_SESSIONS_KEY = 'processed_session_ids';
 
   constructor() {
     this.initialize();
@@ -23,12 +23,16 @@ class SessionManager {
   private async initialize() {
     await Promise.all([
       this.loadSessions(),
-      this.loadCategories()
+      this.loadCategories(),
+      this.loadProcessedSessionIds()
     ]);
     
     if (Platform.OS !== 'web') {
       // Subscribe to MQTT sessions
       mqttService.subscribeToSessions(this.handleNewSession.bind(this));
+      
+      // Subscribe to MQTT heartbeat
+      mqttService.subscribeToHeartbeat(this.handleHeartbeatUpdate.bind(this));
       
       // Try to connect to the MQTT broker
       try {
@@ -46,6 +50,7 @@ class SessionManager {
       const storedSessions = await AsyncStorage.getItem(STORAGE_KEYS.SESSIONS);
       if (storedSessions) {
         this.sessions = JSON.parse(storedSessions);
+        console.log(`Loaded ${this.sessions.length} stored sessions`);
         this.notifySubscribers();
       }
     } catch (error) {
@@ -61,6 +66,28 @@ class SessionManager {
     }
   }
   
+  private async loadProcessedSessionIds() {
+    try {
+      const storedIds = await AsyncStorage.getItem(this.PROCESSED_SESSIONS_KEY);
+      if (storedIds) {
+        const idArray = JSON.parse(storedIds);
+        this.processedSessionIds = new Set(idArray);
+        console.log(`Loaded ${this.processedSessionIds.size} processed session IDs`);
+      }
+    } catch (error) {
+      console.error('Error loading processed session IDs:', error);
+    }
+  }
+  
+  private async saveProcessedSessionIds() {
+    try {
+      const idArray = Array.from(this.processedSessionIds);
+      await AsyncStorage.setItem(this.PROCESSED_SESSIONS_KEY, JSON.stringify(idArray));
+    } catch (error) {
+      console.error('Error saving processed session IDs:', error);
+    }
+  }
+  
   private async loadCategories() {
     this.userCategories = await CategoryUtils.loadUserCategories();
   }
@@ -68,6 +95,22 @@ class SessionManager {
   // ===== Session Management Methods =====
   
   private handleNewSession(session: FridgeSession) {
+    console.log(`Received session: ${session.sessionId} with ${session.items.length} items`);
+    
+    // Check if this session has already been processed
+    if (this.processedSessionIds.has(session.sessionId)) {
+      console.log(`Session ${session.sessionId} already processed, ignoring duplicate`);
+      return;
+    }
+    
+    // Check if we already have this session (by ID)
+    const existingSessionIndex = this.sessions.findIndex(s => s.sessionId === session.sessionId);
+    if (existingSessionIndex !== -1) {
+      console.log(`Session ${session.sessionId} already exists in sessions list, ignoring duplicate`);
+      return;
+    }
+    
+    // It's a new session, add it
     const editableSession: EditableSession = {
       ...session,
       items: session.items.map(item => ({
@@ -79,8 +122,44 @@ class SessionManager {
     };
 
     this.sessions.unshift(editableSession);
+    
+    // If this is a pending session, show a notification toast
+    if (session.status === 'pending') {
+      toastStore.info(`New session with ${session.items.length} item(s) received`);
+    }
+    
+    // Save and notify
     this.saveSessions();
     this.notifySubscribers();
+    
+    // Record this session as processed
+    this.markSessionAsProcessed(session.sessionId);
+  }
+  
+  private async markSessionAsProcessed(sessionId: string) {
+    this.processedSessionIds.add(sessionId);
+    
+    // Maintain a reasonable size for the set (keep last 1000 sessions)
+    if (this.processedSessionIds.size > 1000) {
+      const idsArray = Array.from(this.processedSessionIds);
+      this.processedSessionIds = new Set(idsArray.slice(-1000));
+    }
+    
+    await this.saveProcessedSessionIds();
+  }
+  
+  private handleHeartbeatUpdate(heartbeatInfo: {
+    lastHeartbeat: number;
+    raspberryPiStatus: 'online' | 'offline' | 'unknown';
+  }) {
+    // This is optional - you could use heartbeat info to show Pi status in the UI
+    // For example, show a toast when the Pi goes offline
+    if (heartbeatInfo.raspberryPiStatus === 'offline') {
+      toastStore.warning('Raspberry Pi appears to be offline');
+    } else if (heartbeatInfo.raspberryPiStatus === 'online') {
+      // Optional: Show toast when Pi comes back online
+      // toastStore.success('Raspberry Pi is online');
+    }
   }
 
   async approveSession(sessionId: string, items: EditableFridgeItem[]) {
@@ -137,7 +216,7 @@ class SessionManager {
       i => i.name.toLowerCase() === item.name.toLowerCase()
     );
 
-    let remainingToRemove = item.quantity;
+    let remainingToRemove = item.quantity || 1;
     let removedCount = 0;
 
     for (const matchingItem of matchingItems) {
@@ -265,6 +344,20 @@ class SessionManager {
       this.userCategories.push(trimmedCategory);
       await CategoryUtils.saveUserCategories(this.userCategories);
     }
+  }
+
+  // ===== MQTT Status Methods =====
+  
+  isConnectedToMqtt(): boolean {
+    return mqttService.isConnected();
+  }
+  
+  getRaspberryPiStatus(): 'online' | 'offline' | 'unknown' {
+    return mqttService.getRaspberryPiStatus();
+  }
+  
+  reconnectToMqtt(): void {
+    mqttService.reconnect();
   }
 
   // ===== Storage Utility Methods =====

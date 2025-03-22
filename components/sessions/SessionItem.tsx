@@ -39,13 +39,6 @@ const SessionItem: React.FC<SessionItemProps> = ({
             <Text style={styles.barcodeText}>{item.barcode}</Text>
           </View>
         )}
-        
-        {/* Show confidence if below threshold */}
-        {item.confidence < 0.8 && (
-          <Text style={styles.lowConfidence}>
-            Low confidence detection ({Math.round(item.confidence * 100)}%)
-          </Text>
-        )}
       </View>
 
       <View style={styles.itemDetails}>

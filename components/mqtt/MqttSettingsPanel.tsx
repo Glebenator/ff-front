@@ -31,7 +31,7 @@ export default function MqttSettingsPanel({
   setShowSettings,
   onClearMessages,
   initialBroker = '',
-  initialPort = 1883,
+  initialPort = 9001,
   initialUsername = '',
   initialPassword = '',
   initialTopic = 'rpi/test'
