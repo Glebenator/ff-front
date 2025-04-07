@@ -1,19 +1,19 @@
 // components/RecipeList.tsx
 import React from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { theme } from '@/styles/theme';
-import { sharedStyles } from '@/styles/sharedStyles';
-import { type Recipe } from '@/services/api/recipeGenerationService';
+import { View, StyleSheet, FlatList } from 'react-native';
+import { Recipe } from '@/services/api/recipeGenerationService';
 import RecipeCard from './RecipeCard';
+import ErrorDisplay from '@/components/common/ErrorDisplay';
+import LoadingIndicator from '@/components/common/LoadingIndicator';
+import EmptyState from '@/components/common/EmptyState';
 
 interface RecipeListProps {
   recipes: Recipe[];
   isLoading: boolean;
-  error: string | null;
+  error: Error | null;
   onRetry: () => void;
-  onFavoriteToggle: (recipe: Recipe) => void;
-  isFavorite: (recipeId: string) => boolean;
+  onFavoriteToggle?: (recipe: Recipe) => void;
+  isFavorite?: (recipe: Recipe) => boolean;
 }
 
 export default function RecipeList({
@@ -25,101 +25,49 @@ export default function RecipeList({
   isFavorite
 }: RecipeListProps) {
   if (isLoading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>
-          Generating recipes...
-        </Text>
-      </View>
-    );
+    return <LoadingIndicator message="Finding recipes..." />;
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Ionicons 
-          name="alert-circle" 
-          size={48} 
-          color={theme.colors.status.error} 
-        />
-        <Text style={styles.errorText}>{error}</Text>
-        <Pressable 
-          style={styles.retryButton}
-          onPress={onRetry}
-        >
-          <Text style={styles.retryButtonText}>Try Again</Text>
-        </Pressable>
-      </View>
+      <ErrorDisplay
+        title="Failed to load recipes"
+        message={error.message}
+        onRetry={onRetry}
+      />
     );
   }
 
   if (recipes.length === 0) {
     return (
-      <View style={styles.centerContainer}>
-        <Ionicons 
-          name="restaurant" 
-          size={48} 
-          color={theme.colors.text.secondary} 
-        />
-        <Text style={styles.emptyText}>
-          Generate your first recipes by selecting your preferences above
-        </Text>
-      </View>
+      <EmptyState
+        icon="restaurant-outline"
+        title="No Recipes Found"
+        message="There are no recipes in this category yet. Generate some recipes or try different ingredients."
+      />
     );
   }
 
   return (
-    <View style={styles.list}>
-      {recipes.map(recipe => (
-        <RecipeCard
-          key={recipe.id}
-          recipe={recipe}
-          onFavoriteToggle={onFavoriteToggle}
-          isFavorite={isFavorite(recipe.id)}
-        />
-      ))}
+    <View style={styles.container}>
+      <FlatList
+        data={recipes}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <RecipeCard
+            recipe={item}
+            onFavoriteToggle={onFavoriteToggle}
+            isFavorite={isFavorite ? isFavorite(item) : false}
+          />
+        )}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {
-    gap: theme.spacing.md,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.xl,
-  },
-  loadingText: {
-    marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.text.primary,
-  },
-  errorText: {
-    marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-  },
-  emptyText: {
-    marginTop: theme.spacing.md,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: theme.spacing.lg,
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-  },
-  retryButtonText: {
-    color: theme.colors.background.primary,
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
-  },
+  container: {
+    flex: 1
+  }
 });

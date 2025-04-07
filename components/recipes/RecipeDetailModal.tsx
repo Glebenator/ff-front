@@ -1,57 +1,28 @@
-// components/RecipeDetailModal.tsx
-import React, { useState } from 'react';
-import { 
-  Modal, 
-  View, 
-  Text, 
-  ScrollView, 
-  Pressable, 
-  Image, 
-  StyleSheet,
-  Platform,
-  useWindowDimensions 
-} from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, Modal, ScrollView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Recipe } from '@/services/api/recipeGenerationService';
 import { theme } from '@/styles/theme';
-import { sharedStyles } from '@/styles/sharedStyles';
-import { type Recipe } from '@/services/api/recipeGenerationService';
-import { type IngredientMatch } from '@/services/recipeMatcherService';
 
 interface RecipeDetailModalProps {
-  recipe: Recipe;
   visible: boolean;
+  recipe: Recipe | null;
   onClose: () => void;
-  onFavoriteToggle: () => void;
-  isFavorite: boolean;
 }
 
-export default function RecipeDetailModal({ 
-  recipe, 
-  visible, 
-  onClose,
-  onFavoriteToggle,
-  isFavorite 
-}: RecipeDetailModalProps) {
-  const { width } = useWindowDimensions();
-  const [userRating, setUserRating] = useState<number>(0);
-  
-  const modalStyle = Platform.select({
-    web: {
-      width: Math.min(800, width - 40),
-      alignSelf: 'center',
-      margin: 20,
-      maxHeight: '90vh',
-    },
-    default: {
-      flex: 1,
-      margin: 0,
-    },
-  });
+export default function RecipeDetailModal({ visible, recipe, onClose }: RecipeDetailModalProps) {
+  if (!recipe) return null;
 
-  const getMatchColor = (percentage: number) => {
-    if (percentage >= 80) return theme.colors.status.success;
-    if (percentage >= 50) return theme.colors.primary;
-    return theme.colors.status.warning;
+  // Helper function to extract ingredient information
+  const getIngredientDetails = (ingredient: any) => {
+    if (typeof ingredient === 'string') {
+      return {
+        name: ingredient,
+        quantity: 'To taste',
+        macros: { protein: '0g', carbs: '0g', fat: '0g' }
+      };
+    }
+    return ingredient;
   };
 
   return (
@@ -61,441 +32,245 @@ export default function RecipeDetailModal({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={[styles.modalContainer, modalStyle]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable 
-            onPress={onClose}
-            style={styles.headerButton}
-          >
-            <Ionicons name="close" size={24} color={theme.colors.text.primary} />
-          </Pressable>
-          <Pressable 
-            onPress={onFavoriteToggle}
-            style={styles.headerButton}
-          >
-            <Ionicons 
-              name={isFavorite ? "heart" : "heart-outline"} 
-              size={24} 
-              color={isFavorite ? theme.colors.status.error : theme.colors.text.primary} 
-            />
-          </Pressable>
-        </View>
-
-        <ScrollView 
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Hero Image */}
-          <Image 
-            source={{ uri: recipe.imageUrl }}
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
-
-          <View style={styles.mainContent}>
-            {/* Title and Rating */}
-            <View style={styles.titleSection}>
-              <Text style={styles.title}>{recipe.title}</Text>
-              <RatingStars 
-                rating={userRating} 
-                onRatingChange={setUserRating} 
-              />
-            </View>
-
-            {/* Quick Info */}
-            <View style={styles.quickInfoSection}>
-              <QuickInfoItem 
-                icon="time-outline" 
-                label="Cooking Time" 
-                value={recipe.cookingTime} 
-              />
-              <QuickInfoItem 
-                icon="restaurant-outline" 
-                label="Difficulty" 
-                value={recipe.difficulty} 
-              />
-              <QuickInfoItem 
-                icon="people-outline" 
-                label="Servings" 
-                value={recipe.servings} 
-              />
-              <QuickInfoItem 
-                icon="flame-outline" 
-                label="Calories" 
-                value={recipe.calories} 
-              />
-            </View>
-
-            {/* Description */}
-            <View style={styles.section}>
-              <Text style={styles.description}>{recipe.description}</Text>
-            </View>
-
-            {/* Nutritional Info */}
-            <View style={styles.section}>
-              <SectionTitle title="Nutritional Information" />
-              <View style={styles.nutritionGrid}>
-                <NutritionItem 
-                  label="Protein" 
-                  value={recipe.nutritionalInfo.protein} 
-                />
-                <NutritionItem 
-                  label="Carbs" 
-                  value={recipe.nutritionalInfo.carbs} 
-                />
-                <NutritionItem 
-                  label="Fat" 
-                  value={recipe.nutritionalInfo.fat} 
-                />
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.header}>
+            <Text style={styles.title}>{recipe.title}</Text>
+            <Pressable onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+            </Pressable>
+          </View>
+          
+          <ScrollView style={styles.scrollContent}>
+            <Text style={styles.description}>{recipe.description}</Text>
+            
+            {/* Recipe details */}
+            <View style={styles.detailsContainer}>
+              <View style={styles.detailItem}>
+                <Ionicons name="time-outline" size={16} color={theme.colors.text.secondary} />
+                <Text style={styles.detailText}>{recipe.cookingTime}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Ionicons name="barbell-outline" size={16} color={theme.colors.text.secondary} />
+                <Text style={styles.detailText}>{recipe.difficulty}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Ionicons name="flame-outline" size={16} color={theme.colors.text.secondary} />
+                <Text style={styles.detailText}>{recipe.calories}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Ionicons name="people-outline" size={16} color={theme.colors.text.secondary} />
+                <Text style={styles.detailText}>{recipe.servings} servings</Text>
               </View>
             </View>
-
-            {/* Ingredients */}
-            <View style={styles.section}>
-              <SectionTitle title="Ingredients" />
-              
-              {/* Match Percentage */}
-              <View style={styles.matchPercentageContainer}>
-                <Text style={[
-                  styles.matchPercentageText,
-                  { color: getMatchColor(recipe.matchPercentage) }
-                ]}>
-                  {Math.round(recipe.matchPercentage)}% of ingredients available
-                </Text>
-                <View style={styles.matchBar}>
-                  <View 
-                    style={[
-                      styles.matchBarFill, 
-                      { 
-                        width: `${recipe.matchPercentage}%`,
-                        backgroundColor: getMatchColor(recipe.matchPercentage)
-                      }
-                    ]} 
-                  />
+            
+            {/* Nutritional info */}
+            <View style={styles.nutritionContainer}>
+              <Text style={styles.sectionTitle}>Nutrition (per serving):</Text>
+              <View style={styles.macrosContainer}>
+                <View style={styles.macroItem}>
+                  <Text style={styles.macroValue}>{recipe.nutritionalInfo.protein}</Text>
+                  <Text style={styles.macroLabel}>Protein</Text>
+                </View>
+                <View style={styles.macroItem}>
+                  <Text style={styles.macroValue}>{recipe.nutritionalInfo.carbs}</Text>
+                  <Text style={styles.macroLabel}>Carbs</Text>
+                </View>
+                <View style={styles.macroItem}>
+                  <Text style={styles.macroValue}>{recipe.nutritionalInfo.fat}</Text>
+                  <Text style={styles.macroLabel}>Fat</Text>
                 </View>
               </View>
+            </View>
 
+            {/* Ingredients sections with detailed information */}
+            <View style={styles.ingredientsContainer}>
+              <Text style={styles.sectionTitle}>You have:</Text>
               <View style={styles.ingredientsList}>
-                {/* Available Ingredients */}
-                <View style={styles.ingredientGroup}>
-                  <Text style={styles.ingredientGroupTitle}>Available Ingredients</Text>
-                  {recipe.ingredientMatches
-                    .filter(match => match.match)
-                    .map((ingredient, index) => (
-                      <IngredientItem 
-                        key={`available-${index}`}
-                        ingredient={ingredient}
-                        isAvailable={true}
-                      />
-                    ))}
-                </View>
-
-                {/* Missing Ingredients */}
-                {recipe.missingIngredients.length > 0 && (
-                  <View style={styles.ingredientGroup}>
-                    <Text style={styles.ingredientGroupTitle}>Additional Ingredients Needed</Text>
-                    {recipe.ingredientMatches
-                      .filter(match => !match.match)
-                      .map((ingredient, index) => (
-                        <IngredientItem 
-                          key={`missing-${index}`}
-                          ingredient={ingredient}
-                          isAvailable={false}
-                        />
-                      ))}
-                  </View>
-                )}
+                {recipe.matchingIngredients.map((ingredient, index) => {
+                  const details = getIngredientDetails(ingredient);
+                  return (
+                    <View key={`matching-${index}`} style={styles.ingredientItem}>
+                      <Text style={styles.ingredientName}>
+                        • {details.name} 
+                        <Text style={styles.ingredientQuantity}> ({details.quantity})</Text>
+                      </Text>
+                      <Text style={styles.macrosText}>
+                        P: {details.macros.protein} • C: {details.macros.carbs} • F: {details.macros.fat}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
+
+              {recipe.missingIngredients.length > 0 && (
+                <>
+                  <Text style={styles.sectionTitle}>You need:</Text>
+                  <View style={styles.ingredientsList}>
+                    {recipe.missingIngredients.map((ingredient, index) => {
+                      const details = getIngredientDetails(ingredient);
+                      return (
+                        <View key={`missing-${index}`} style={styles.ingredientItem}>
+                          <Text style={styles.ingredientName}>
+                            • {details.name}
+                            <Text style={styles.ingredientQuantity}> ({details.quantity})</Text>
+                          </Text>
+                          <Text style={styles.macrosText}>
+                            P: {details.macros.protein} • C: {details.macros.carbs} • F: {details.macros.fat}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
             </View>
 
             {/* Instructions */}
-            <View style={styles.section}>
-              <SectionTitle title="Instructions" />
-              {recipe.instructions.map((instruction, index) => (
-                <View key={index} style={styles.instructionItem}>
-                  <View style={styles.instructionNumber}>
-                    <Text style={styles.instructionNumberText}>{index + 1}</Text>
-                  </View>
-                  <Text style={styles.instructionText}>{instruction}</Text>
+            <View style={styles.instructionsContainer}>
+              <Text style={styles.sectionTitle}>Instructions:</Text>
+              {recipe.instructions.map((step, index) => (
+                <View key={`instruction-${index}`} style={styles.instructionItem}>
+                  <Text style={styles.instructionNumber}>{index + 1}</Text>
+                  <Text style={styles.instructionText}>{step}</Text>
                 </View>
               ))}
             </View>
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </View>
       </View>
     </Modal>
   );
 }
 
-// Helper Components
-const SectionTitle = ({ title }: { title: string }) => (
-  <Text style={styles.sectionTitle}>{title}</Text>
-);
-
-const RatingStars = ({ 
-  rating, 
-  onRatingChange 
-}: { 
-  rating: number; 
-  onRatingChange: (rating: number) => void;
-}) => (
-  <View style={styles.ratingContainer}>
-    {[1, 2, 3, 4, 5].map((star) => (
-      <Pressable
-        key={star}
-        onPress={() => onRatingChange(star)}
-        style={styles.starButton}
-      >
-        <Ionicons
-          name={rating >= star ? "star" : "star-outline"}
-          size={24}
-          color={rating >= star ? theme.colors.primary : theme.colors.text.secondary}
-        />
-      </Pressable>
-    ))}
-  </View>
-);
-
-const QuickInfoItem = ({ 
-  icon, 
-  label, 
-  value 
-}: { 
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  value: string;
-}) => (
-  <View style={styles.quickInfoItem}>
-    <Ionicons name={icon} size={24} color={theme.colors.text.secondary} />
-    <Text style={styles.quickInfoLabel}>{label}</Text>
-    <Text style={styles.quickInfoValue}>{value}</Text>
-  </View>
-);
-
-const NutritionItem = ({ 
-  label, 
-  value 
-}: { 
-  label: string; 
-  value: string;
-}) => (
-  <View style={styles.nutritionItem}>
-    <Text style={styles.nutritionLabel}>{label}</Text>
-    <Text style={styles.nutritionValue}>{value}</Text>
-  </View>
-);
-
-const IngredientItem = ({ 
-  ingredient, 
-  isAvailable 
-}: { 
-  ingredient: IngredientMatch;
-  isAvailable: boolean;
-}) => (
-  <View style={styles.ingredientItem}>
-    <View style={styles.ingredientMain}>
-      <Ionicons
-        name={isAvailable ? "checkmark-circle" : "add-circle"}
-        size={20}
-        color={isAvailable ? theme.colors.status.success : theme.colors.primary}
-      />
-      <Text style={styles.ingredientText}>{ingredient.name}</Text>
-    </View>
-    
-    {isAvailable && ingredient.daysUntilExpiry !== undefined && (
-      <Text style={[
-        styles.expiryText,
-        ingredient.daysUntilExpiry <= 3 && styles.expiryTextWarning,
-        ingredient.daysUntilExpiry <= 0 && styles.expiryTextDanger,
-      ]}>
-        {ingredient.daysUntilExpiry === 0 && 'Expires today'}
-        {ingredient.daysUntilExpiry < 0 && `Expired (${Math.abs(ingredient.daysUntilExpiry)}d)`}
-        {ingredient.daysUntilExpiry > 0 && `${ingredient.daysUntilExpiry}d left`}
-      </Text>
-    )}
-  </View>
-);
-
 const styles = StyleSheet.create({
   modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
     backgroundColor: theme.colors.background.primary,
-    borderRadius: Platform.OS === 'web' ? theme.borderRadius.lg : 0,
+    width: '90%',
+    height: '80%',
+    borderRadius: theme.borderRadius.lg,
     overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     padding: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.primary,
-  },
-  headerButton: {
-    padding: theme.spacing.sm,
-  },
-  content: {
-    flex: 1,
-  },
-  heroImage: {
-    width: '100%',
-    height: 300,
-  },
-  mainContent: {
-    padding: theme.spacing.lg,
-  },
-  titleSection: {
-    marginBottom: theme.spacing.xl,
+    borderBottomColor: theme.colors.border,
   },
   title: {
-    fontSize: theme.fontSize.xxxl,
+    fontSize: theme.fontSize.lg,
     fontWeight: 'bold',
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
+    flex: 1,
   },
-  ratingContainer: {
-    flexDirection: 'row',
-    gap: theme.spacing.xs,
+  closeButton: {
+    padding: 5,
   },
-  starButton: {
-    padding: theme.spacing.xs,
-  },
-  section: {
-    marginBottom: theme.spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
+  scrollContent: {
+    padding: theme.spacing.md,
   },
   description: {
     fontSize: theme.fontSize.md,
-    color: theme.colors.text.primary,
-    lineHeight: 24,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.md,
   },
-  quickInfoSection: {
+  detailsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.md,
   },
-  quickInfoItem: {
-    flex: 1,
-    minWidth: 100,
+  detailItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    marginRight: theme.spacing.md,
+    marginBottom: 4,
   },
-  quickInfoLabel: {
+  detailText: {
+    marginLeft: 4,
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
   },
-  quickInfoValue: {
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-  },
-  nutritionGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: theme.spacing.md,
-  },
-  nutritionItem: {
-    flex: 1,
-    alignItems: 'center',
-    padding: theme.spacing.md,
+  nutritionContainer: {
+    marginBottom: theme.spacing.md,
     backgroundColor: theme.colors.background.secondary,
+    padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
   },
-  nutritionLabel: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
+  macrosContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: theme.spacing.sm,
   },
-  nutritionValue: {
+  macroItem: {
+    alignItems: 'center',
+  },
+  macroValue: {
     fontSize: theme.fontSize.lg,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
   },
-  matchPercentageContainer: {
-    marginBottom: theme.spacing.lg,
+  macroLabel: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.secondary,
   },
-  matchPercentageText: {
+  ingredientsContainer: {
+    marginBottom: theme.spacing.md,
+  },
+  sectionTitle: {
     fontSize: theme.fontSize.md,
-    fontWeight: '600',
-    marginBottom: theme.spacing.xs,
-  },
-  matchBar: {
-    height: 4,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.sm,
-    overflow: 'hidden',
-  },
-  matchBarFill: {
-    height: '100%',
+    fontWeight: 'bold',
+    marginBottom: theme.spacing.sm,
+    color: theme.colors.text.primary,
   },
   ingredientsList: {
-    gap: theme.spacing.lg,
-  },
-  ingredientGroup: {
-    gap: theme.spacing.sm,
-  },
-  ingredientGroupTitle: {
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
   },
   ingredientItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
   },
-  ingredientMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    flex: 1,
-  },
-  ingredientText: {
-    fontSize: theme.fontSize.md,
+  ingredientName: {
+    fontSize: theme.fontSize.sm,
     color: theme.colors.text.primary,
   },
-  expiryText: {
+  ingredientQuantity: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
+    color: theme.colors.text.tertiary,
+    fontStyle: 'italic',
   },
-  expiryTextWarning: {
-    color: theme.colors.status.warning,
+  macrosText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    marginLeft: 12,
   },
-  expiryTextDanger: {
-    color: theme.colors.status.danger,
+  instructionsContainer: {
+    marginBottom: theme.spacing.xl,
   },
   instructionItem: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
     marginBottom: theme.spacing.md,
   },
   instructionNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  instructionNumberText: {
-    color: theme.colors.background.primary,
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginRight: theme.spacing.sm,
+    fontWeight: 'bold',
   },
   instructionText: {
     flex: 1,
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.sm,
     color: theme.colors.text.primary,
-    lineHeight: 24,
   },
 });

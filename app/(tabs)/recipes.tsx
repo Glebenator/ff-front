@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, ScrollView, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import { useRecipes } from '@/hooks/useRecipes';
@@ -25,7 +25,7 @@ export default function RecipeScreen() {
   });
 
   // Hooks
-  const { recipes, isLoading, error, generateRecipes } = useRecipes();
+  const { recipes, recentRecipes, isLoading, error, generateRecipes } = useRecipes();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
 
   // Handlers
@@ -59,7 +59,7 @@ export default function RecipeScreen() {
       case 'suggested':
         return recipes || [];
       case 'recent':
-        return [];
+        return recentRecipes || [];
       default:
         return [];
     }
@@ -72,59 +72,57 @@ export default function RecipeScreen() {
         onChangeTab={setActiveTab} 
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {activeTab === 'suggested' && (
-          <>
-            <PreferencesSection 
-              preferences={preferences}
-              isLoading={isLoading}
-              onMealTypeChange={handleMealTypeChange}
-              onPreferenceSelect={handlePreferenceSelect}
-              onGenerateRecipes={handleGenerate}
-            />
+      {activeTab === 'suggested' && (
+        <>
+          <PreferencesSection 
+            preferences={preferences}
+            isLoading={isLoading}
+            onMealTypeChange={handleMealTypeChange}
+            onPreferenceSelect={handlePreferenceSelect}
+            onGenerateRecipes={handleGenerate}
+          />
 
-            <View style={styles.recipeListSection}>
-              <Text style={[sharedStyles.subtitle as any, styles.recipeListHeader]}>
-                {getDisplayRecipes().length > 0 ? 'Available Recipes' : 'No Recipes Generated Yet'}
-              </Text>
-              <RecipeList
-                recipes={getDisplayRecipes()}
-                isLoading={isLoading}
-                error={error}
-                onRetry={handleGenerate}
-                onFavoriteToggle={toggleFavorite}
-                isFavorite={isFavorite}
-              />
-            </View>
-          </>
-        )}
-
-        {activeTab === 'favorites' && (
           <View style={styles.recipeListSection}>
+            <Text style={[sharedStyles.subtitle as any, styles.recipeListHeader]}>
+              {getDisplayRecipes().length > 0 ? 'Available Recipes' : 'No Recipes Generated Yet'}
+            </Text>
             <RecipeList
               recipes={getDisplayRecipes()}
-              isLoading={false}
-              error={null}
-              onRetry={() => {}}
+              isLoading={isLoading}
+              error={error}
+              onRetry={handleGenerate}
               onFavoriteToggle={toggleFavorite}
               isFavorite={isFavorite}
             />
           </View>
-        )}
+        </>
+      )}
 
-        {activeTab === 'recent' && (
-          <View style={styles.recipeListSection}>
-            <RecipeList
-              recipes={[]}
-              isLoading={false}
-              error={null}
-              onRetry={() => {}}
-              onFavoriteToggle={toggleFavorite}
-              isFavorite={isFavorite}
-            />
-          </View>
-        )}
-      </ScrollView>
+      {activeTab === 'favorites' && (
+        <View style={styles.recipeListSection}>
+          <RecipeList
+            recipes={getDisplayRecipes()}
+            isLoading={false}
+            error={null}
+            onRetry={() => {}}
+            onFavoriteToggle={toggleFavorite}
+            isFavorite={isFavorite}
+          />
+        </View>
+      )}
+
+      {activeTab === 'recent' && (
+        <View style={styles.recipeListSection}>
+          <RecipeList
+            recipes={getDisplayRecipes()}
+            isLoading={false}
+            error={null}
+            onRetry={() => {}}
+            onFavoriteToggle={toggleFavorite}
+            isFavorite={isFavorite}
+          />
+        </View>
+      )}
     </View>
   );
 }

@@ -1,186 +1,292 @@
 // components/RecipeCard.tsx
-import React, { useState } from 'react';
-import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Recipe } from '@/services/api/recipeGenerationService';
 import { theme } from '@/styles/theme';
-import { sharedStyles } from '@/styles/sharedStyles';
-import { type Recipe } from '@/services/api/recipeGenerationService';
-import RecipeDetailModal from './RecipeDetailModal';
 
 interface RecipeCardProps {
-    recipe: Recipe;
-    onFavoriteToggle: (recipe: Recipe) => void;
-    isFavorite: boolean;
-  }
-  
-  export default function RecipeCard({ 
-    recipe, 
-    onFavoriteToggle,
-    isFavorite 
-  }: RecipeCardProps) {
-    const [showDetail, setShowDetail] = useState(false);
-  
-    const getMatchColor = (percentage: number) => {
-      if (percentage >= 80) return theme.colors.status.success;
-      if (percentage >= 50) return theme.colors.primary;
-      return theme.colors.status.warning;
-    };
-  
-    return (
-      <>
-        <Pressable 
-          style={({ pressed }) => [
-            styles.card,
-            pressed && styles.cardPressed
-          ]}
-          onPress={() => setShowDetail(true)}
-        >
-          <Image 
-            source={{ uri: recipe.imageUrl }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-          
-          <View style={styles.content}>
-            <View>
-              <Text style={styles.title} numberOfLines={1}>
-                {recipe.title}
+  recipe: Recipe;
+  style?: object;
+  onFavoriteToggle?: (recipe: Recipe) => void;
+  isFavorite?: boolean;
+  onPress?: () => void;
+}
+
+export default function RecipeCard({
+  recipe,
+  style,
+  onFavoriteToggle,
+  isFavorite = false,
+  onPress
+}: RecipeCardProps) {
+  const handleFavoriteToggle = () => {
+    if (onFavoriteToggle) {
+      onFavoriteToggle(recipe);
+    }
+  };
+
+  // Calculate matching percentage
+  const matchPercentage = recipe.matchPercentage 
+    ? Math.round(recipe.matchPercentage) 
+    : recipe.matchingIngredients.length / (recipe.matchingIngredients.length + recipe.missingIngredients.length) * 100;
+
+  // Helper function to extract ingredient names from either format
+  const getIngredientName = (ingredient: any): string => {
+    if (typeof ingredient === 'string') return ingredient;
+    if (typeof ingredient === 'object' && ingredient !== null) return ingredient.name || 'Unknown';
+    return 'Unknown';
+  };
+
+  return (
+    <Pressable onPress={onPress} style={[styles.card, style]}>
+      {/* Image and match badge */}
+      <View style={styles.imageContainer}>
+        <Image 
+          source={{ uri: recipe.imageUrl || 'https://via.placeholder.com/400x200' }}
+          style={styles.image}
+        />
+        <View style={styles.matchBadge}>
+          <Text style={styles.matchText}>{matchPercentage}% match</Text>
+        </View>
+
+        {/* Favorite button */}
+        {onFavoriteToggle && (
+          <Pressable 
+            style={styles.favoriteButton}
+            onPress={handleFavoriteToggle}
+          >
+            <Ionicons 
+              name={isFavorite ? "heart" : "heart-outline"} 
+              size={24} 
+              color={isFavorite ? theme.colors.status.error : theme.colors.text.primary} 
+            />
+          </Pressable>
+        )}
+      </View>
+
+      {/* Recipe content */}
+      <View style={styles.content}>
+        <Text style={styles.title}>{recipe.title}</Text>
+        <Text style={styles.description}>{recipe.description}</Text>
+        
+        {/* Recipe details */}
+        <View style={styles.detailsContainer}>
+          <View style={styles.detailItem}>
+            <Ionicons name="time-outline" size={16} color={theme.colors.text.secondary} />
+            <Text style={styles.detailText}>{recipe.cookingTime}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Ionicons name="barbell-outline" size={16} color={theme.colors.text.secondary} />
+            <Text style={styles.detailText}>{recipe.difficulty}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Ionicons name="flame-outline" size={16} color={theme.colors.text.secondary} />
+            <Text style={styles.detailText}>{recipe.calories}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Ionicons name="people-outline" size={16} color={theme.colors.text.secondary} />
+            <Text style={styles.detailText}>{recipe.servings} servings</Text>
+          </View>
+        </View>
+
+        {/* Ingredients sections */}
+        <View style={styles.ingredientsContainer}>
+          <Text style={styles.sectionTitle}>You have:</Text>
+          <View style={styles.ingredientsList}>
+            {recipe.matchingIngredients.map((ingredient, index) => (
+              <Text key={`matching-${index}`} style={styles.ingredientText}>
+                • {getIngredientName(ingredient)}
               </Text>
-              
-              <View style={styles.metrics}>
-                <MetricItem 
-                  icon="time-outline" 
-                  value={recipe.cookingTime} 
-                />
-                <MetricItem 
-                  icon="restaurant-outline" 
-                  value={recipe.difficulty} 
-                />
-                {isFavorite && (
-                  <Ionicons 
-                    name="heart" 
-                    size={16} 
-                    color={theme.colors.status.error} 
-                  />
-                )}
+            ))}
+          </View>
+
+          {recipe.missingIngredients.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>You need:</Text>
+              <View style={styles.ingredientsList}>
+                {recipe.missingIngredients.map((ingredient, index) => (
+                  <Text key={`missing-${index}`} style={styles.ingredientText}>
+                    • {getIngredientName(ingredient)}
+                  </Text>
+                ))}
               </View>
+            </>
+          )}
+        </View>
+
+        {/* Nutritional info */}
+        <View style={styles.nutritionContainer}>
+          <Text style={styles.sectionTitle}>Nutrition (per serving):</Text>
+          <View style={styles.macrosContainer}>
+            <View style={styles.macroItem}>
+              <Text style={styles.macroValue}>{recipe.nutritionalInfo.protein}</Text>
+              <Text style={styles.macroLabel}>Protein</Text>
             </View>
-  
-            <View style={styles.matchInfo}>
-              <View style={styles.matchPercentage}>
-                <Text style={[
-                  styles.matchPercentageText,
-                  { color: getMatchColor(recipe.matchPercentage) }
-                ]}>
-                  {Math.round(recipe.matchPercentage)}% match
-                </Text>
-              </View>
-              
-              <Text style={styles.ingredientAvailable}>
-                {recipe.matchingIngredients.length} ingredients available
-              </Text>
-              <Text style={styles.ingredientNeeded}>
-                {recipe.missingIngredients.length} ingredients needed
-              </Text>
+            <View style={styles.macroItem}>
+              <Text style={styles.macroValue}>{recipe.nutritionalInfo.carbs}</Text>
+              <Text style={styles.macroLabel}>Carbs</Text>
+            </View>
+            <View style={styles.macroItem}>
+              <Text style={styles.macroValue}>{recipe.nutritionalInfo.fat}</Text>
+              <Text style={styles.macroLabel}>Fat</Text>
             </View>
           </View>
-  
-          <Ionicons 
-            name="chevron-forward" 
-            size={20} 
-            color={theme.colors.text.secondary} 
-            style={styles.arrow}
-          />
-        </Pressable>
-  
-        <RecipeDetailModal
-          recipe={recipe}
-          visible={showDetail}
-          onClose={() => setShowDetail(false)}
-          onFavoriteToggle={() => onFavoriteToggle(recipe)}
-          isFavorite={isFavorite}
-        />
-      </>
-    );
-  }
-  
-  const MetricItem = ({ 
-    icon, 
-    value 
-  }: { 
-    icon: React.ComponentProps<typeof Ionicons>['name'];
-    value: string;
-  }) => (
-    <View style={styles.metricItem}>
-      <Ionicons 
-        name={icon} 
-        size={14} 
-        color={theme.colors.text.secondary} 
-      />
-      <Text style={styles.metricText}>{value}</Text>
-    </View>
+        </View>
+        
+        {/* Instructions */}
+        <View style={styles.instructionsContainer}>
+          <Text style={styles.sectionTitle}>Instructions:</Text>
+          {recipe.instructions.map((step, index) => (
+            <View key={`instruction-${index}`} style={styles.instructionItem}>
+              <Text style={styles.instructionNumber}>{index + 1}</Text>
+              <Text style={styles.instructionText}>{step}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </Pressable>
   );
-  
-  const styles = StyleSheet.create({
-    card: {
-      flexDirection: 'row',
-      backgroundColor: theme.colors.background.tertiary,
-      borderRadius: theme.borderRadius.lg,
-      overflow: 'hidden',
-      marginBottom: theme.spacing.md,
-    },
-    cardPressed: {
-      opacity: 0.7,
-    },
-    image: {
-      width: 100,
-      height: 100,
-    },
-    content: {
-      flex: 1,
-      padding: theme.spacing.md,
-      justifyContent: 'space-between',
-    },
-    title: {
-      fontSize: theme.fontSize.lg,
-      fontWeight: 'bold',
-      color: theme.colors.text.primary,
-      marginBottom: theme.spacing.xs,
-    },
-    metrics: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: theme.spacing.sm,
-    },
-    metricItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    metricText: {
-      fontSize: theme.fontSize.sm,
-      color: theme.colors.text.secondary,
-    },
-    matchInfo: {
-      gap: theme.spacing.xs,
-    },
-    matchPercentage: {
-      marginBottom: theme.spacing.xs,
-    },
-    matchPercentageText: {
-      fontSize: theme.fontSize.md,
-      fontWeight: '600',
-    },
-    ingredientAvailable: {
-      fontSize: theme.fontSize.sm,
-      color: theme.colors.status.success,
-    },
-    ingredientNeeded: {
-      fontSize: theme.fontSize.sm,
-      color: theme.colors.status.warning,
-    },
-    arrow: {
-      alignSelf: 'center',
-      marginRight: theme.spacing.sm,
-    },
-  });
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.md,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  imageContainer: {
+    position: 'relative',
+    height: 160,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  matchBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: theme.borderRadius.full,
+  },
+  matchText: {
+    color: theme.colors.text.primary,
+    fontSize: theme.fontSize.xs,
+    fontWeight: 'bold',
+  },
+  favoriteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: theme.borderRadius.full,
+    padding: 6,
+  },
+  content: {
+    padding: theme.spacing.md,
+  },
+  title: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: theme.colors.text.primary,
+  },
+  description: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.sm,
+  },
+  detailsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: theme.spacing.sm,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+    marginBottom: 4,
+  },
+  detailText: {
+    marginLeft: 4,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.secondary,
+  },
+  ingredientsContainer: {
+    marginBottom: theme.spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: theme.colors.text.primary,
+  },
+  ingredientsList: {
+    marginBottom: theme.spacing.sm,
+  },
+  ingredientText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.secondary,
+    marginBottom: 2,
+  },
+  nutritionContainer: {
+    marginBottom: theme.spacing.sm,
+  },
+  macrosContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.xs,
+  },
+  macroItem: {
+    alignItems: 'center',
+  },
+  macroValue: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: 'bold',
+    color: theme.colors.text.primary,
+  },
+  macroLabel: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.secondary,
+  },
+  instructionsContainer: {
+    marginTop: theme.spacing.md,
+  },
+  instructionItem: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.sm,
+  },
+  instructionNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginRight: theme.spacing.sm,
+    fontWeight: 'bold',
+  },
+  instructionText: {
+    flex: 1,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.primary,
+  },
+  viewMoreText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.primary,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
+    fontStyle: 'italic',
+  }
+});

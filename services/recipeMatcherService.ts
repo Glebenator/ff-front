@@ -12,11 +12,10 @@ export interface MatchedRecipe {
   id: string;
   title: string;
   description: string;
-  ingredientMatches: IngredientMatch[];
-  matchingIngredients: string[];
-  missingIngredients: string[];
+  matchingIngredients: Array<{name: string; quantity: string; macros: {protein: string; carbs: string; fat: string}}>;
+  missingIngredients: Array<{name: string; quantity: string; macros: {protein: string; carbs: string; fat: string}}>;
   instructions: string[];
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  difficulty: string;
   cookingTime: string;
   calories: string;
   servings: string;
@@ -25,8 +24,8 @@ export interface MatchedRecipe {
     carbs: string;
     fat: string;
   };
-  imageUrl: string;
-  matchPercentage: number;
+  matchPercentage?: number;
+  imageUrl?: string;
 }
 
 export class RecipeMatcherService {
@@ -60,6 +59,32 @@ export class RecipeMatcherService {
     return false;
   }
 
+  // Get all user ingredients for recipe generation
+  static async getUserIngredients() {
+    try {
+      const userIngredients = await ingredientDb.getAll();
+      
+      // Include all ingredients but add an expired flag
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      return userIngredients.map(ingredient => {
+        const expiryDate = new Date(ingredient.expiryDate);
+        const isExpired = expiryDate < today;
+        const daysUntilExpiry = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        return {
+          ...ingredient,
+          isExpired,
+          daysUntilExpiry
+        };
+      });
+    } catch (error) {
+      console.error('Error getting user ingredients:', error);
+      return [];
+    }
+  }
+
   static async matchRecipeIngredients(recipeIngredients: string[]): Promise<IngredientMatch[]> {
     const userIngredients = await ingredientDb.getAll();
     
@@ -90,29 +115,94 @@ export class RecipeMatcherService {
   }
 
   static async enhanceRecipeWithMatches(recipe: any): Promise<MatchedRecipe> {
-    // Combine all ingredients into a single array for matching
-    const allIngredients = [...recipe.matchingIngredients, ...recipe.missingIngredients];
+    // Extract names from ingredients for matching
+    const allIngredientNames = [
+      ...(Array.isArray(recipe.matchingIngredients) 
+        ? recipe.matchingIngredients.map((ing: any) => typeof ing === 'string' ? ing : ing.name)
+        : []),
+      ...(Array.isArray(recipe.missingIngredients)
+        ? recipe.missingIngredients.map((ing: any) => typeof ing === 'string' ? ing : ing.name)
+        : [])
+    ];
     
     // Match ingredients against user's inventory
-    const ingredientMatches = await this.matchRecipeIngredients(allIngredients);
+    const ingredientMatches = await this.matchRecipeIngredients(allIngredientNames);
     
-    // Split ingredients based on actual matches
-    const matchingIngredients = ingredientMatches
-      .filter(match => match.match)
-      .map(match => match.name);
-
-    const missingIngredients = ingredientMatches
-      .filter(match => !match.match)
-      .map(match => match.name);
-
+    // Create the proper formatted ingredients based on matches
+    const newMatchingIngredients = [];
+    const newMissingIngredients = [];
+    
+    // Process matchingIngredients from the recipe
+    if (Array.isArray(recipe.matchingIngredients)) {
+      for (const ing of recipe.matchingIngredients) {
+        const ingName = typeof ing === 'string' ? ing : ing.name;
+        const match = ingredientMatches.find(m => this.ingredientsMatch(m.name, ingName));
+        
+        if (match && match.match) {
+          // Add to matching ingredients
+          if (typeof ing === 'string') {
+            newMatchingIngredients.push({
+              name: ing,
+              quantity: 'To taste', // Default for old format
+              macros: { protein: '0g', carbs: '0g', fat: '0g' }
+            });
+          } else {
+            newMatchingIngredients.push(ing);
+          }
+        } else {
+          // Add to missing ingredients
+          if (typeof ing === 'string') {
+            newMissingIngredients.push({
+              name: ing,
+              quantity: 'To taste', // Default for old format
+              macros: { protein: '0g', carbs: '0g', fat: '0g' }
+            });
+          } else {
+            newMissingIngredients.push(ing);
+          }
+        }
+      }
+    }
+    
+    // Process missingIngredients from the recipe
+    if (Array.isArray(recipe.missingIngredients)) {
+      for (const ing of recipe.missingIngredients) {
+        const ingName = typeof ing === 'string' ? ing : ing.name;
+        const match = ingredientMatches.find(m => this.ingredientsMatch(m.name, ingName));
+        
+        if (match && match.match) {
+          // Add to matching ingredients
+          if (typeof ing === 'string') {
+            newMatchingIngredients.push({
+              name: ing,
+              quantity: 'To taste', // Default for old format
+              macros: { protein: '0g', carbs: '0g', fat: '0g' }
+            });
+          } else {
+            newMatchingIngredients.push(ing);
+          }
+        } else {
+          // Add to missing ingredients
+          if (typeof ing === 'string') {
+            newMissingIngredients.push({
+              name: ing,
+              quantity: 'To taste', // Default for old format
+              macros: { protein: '0g', carbs: '0g', fat: '0g' }
+            });
+          } else {
+            newMissingIngredients.push(ing);
+          }
+        }
+      }
+    }
+    
     // Calculate match percentage
-    const matchPercentage = (matchingIngredients.length / allIngredients.length) * 100;
+    const matchPercentage = (newMatchingIngredients.length / (newMatchingIngredients.length + newMissingIngredients.length)) * 100;
 
     return {
       ...recipe,
-      ingredientMatches,
-      matchingIngredients,
-      missingIngredients,
+      matchingIngredients: newMatchingIngredients,
+      missingIngredients: newMissingIngredients,
       matchPercentage
     };
   }
