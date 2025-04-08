@@ -290,7 +290,7 @@ const IngredientItem = ({
   ingredient, 
   isAvailable 
 }: { 
-  ingredient: IngredientMatch;
+  ingredient: any;  // Type will be refined when we have proper types
   isAvailable: boolean;
 }) => (
   <View style={styles.ingredientItem}>
@@ -300,7 +300,9 @@ const IngredientItem = ({
         size={20}
         color={isAvailable ? theme.colors.status.success : theme.colors.primary}
       />
-      <Text style={styles.ingredientText}>{ingredient.name}</Text>
+      <Text style={styles.ingredientText}>
+        {ingredient.quantity} {ingredient.name}
+      </Text>
     </View>
     
     {isAvailable && ingredient.daysUntilExpiry !== undefined && (

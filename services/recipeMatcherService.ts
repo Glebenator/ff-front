@@ -13,8 +13,8 @@ export interface MatchedRecipe {
   title: string;
   description: string;
   ingredientMatches: IngredientMatch[];
-  matchingIngredients: string[];
-  missingIngredients: string[];
+  matchingIngredients: Array<{ name: string; quantity: string; }>;
+  missingIngredients: Array<{ name: string; quantity: string; }>;
   instructions: string[];
   difficulty: 'Easy' | 'Medium' | 'Hard';
   cookingTime: string;
@@ -90,27 +90,47 @@ export class RecipeMatcherService {
   }
 
   static async enhanceRecipeWithMatches(recipe: any): Promise<MatchedRecipe> {
-    // Combine all ingredients into a single array for matching
-    const allIngredients = [...recipe.matchingIngredients, ...recipe.missingIngredients];
+    // Extract ingredients with their quantities
+    const allIngredients = [
+      ...(recipe.matchingIngredients || []).map((i: any) => ({
+        name: typeof i === 'string' ? i : i.name,
+        quantity: typeof i === 'string' ? null : i.quantity
+      })),
+      ...(recipe.missingIngredients || []).map((i: any) => ({
+        name: typeof i === 'string' ? i : i.name,
+        quantity: typeof i === 'string' ? null : i.quantity
+      }))
+    ];
     
     // Match ingredients against user's inventory
-    const ingredientMatches = await this.matchRecipeIngredients(allIngredients);
+    const ingredientMatches = await this.matchRecipeIngredients(allIngredients.map(i => i.name));
     
-    // Split ingredients based on actual matches
-    const matchingIngredients = ingredientMatches
+    // Combine matches with quantities
+    const enhancedMatches = ingredientMatches.map((match, index) => ({
+      ...match,
+      quantity: allIngredients[index].quantity
+    }));
+    
+    // Split ingredients based on matches
+    const matchingIngredients = enhancedMatches
       .filter(match => match.match)
-      .map(match => match.name);
+      .map(match => ({
+        name: match.name,
+        quantity: match.quantity || '(amount not specified)'
+      }));
 
-    const missingIngredients = ingredientMatches
+    const missingIngredients = enhancedMatches
       .filter(match => !match.match)
-      .map(match => match.name);
+      .map(match => ({
+        name: match.name,
+        quantity: match.quantity || '(amount not specified)'
+      }));
 
-    // Calculate match percentage
     const matchPercentage = (matchingIngredients.length / allIngredients.length) * 100;
 
     return {
       ...recipe,
-      ingredientMatches,
+      ingredientMatches: enhancedMatches,
       matchingIngredients,
       missingIngredients,
       matchPercentage

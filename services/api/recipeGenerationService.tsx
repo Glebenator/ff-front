@@ -1,8 +1,120 @@
 // services/ai/mockGeminiService.ts
 import { type MatchedRecipe, RecipeMatcherService } from '@/services/recipeMatcherService';
+import { GoogleGenAI } from '@google/genai';
+import { ingredientDb } from '@/services/database/ingredientDb';
 
 export interface Recipe extends MatchedRecipe {}
 
+// Initialize Gemini
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+
+const SYSTEM_PROMPT = `You are a cooking expert that generates recipes based on available ingredients. 
+Generate recipes that maximize the use of available ingredients, especially those that are expiring soon.
+Always return recipes in the following JSON format:
+{
+  "title": "Recipe name",
+  "description": "Brief description",
+  "matchingIngredients": [
+    {"name": "ingredient1", "quantity": "200g"},
+    {"name": "ingredient2", "quantity": "2 cups"}
+  ],
+  "missingIngredients": [
+    {"name": "ingredient3", "quantity": "1 tbsp"},
+    {"name": "ingredient4", "quantity": "3 pieces"}
+  ],
+  "instructions": ["Step 1", "Step 2", "etc"],
+  "difficulty": "Easy|Medium|Hard",
+  "cookingTime": "XX mins",
+  "calories": "XXX kcal",
+  "servings": "X",
+  "nutritionalInfo": {
+    "protein": "XXg",
+    "carbs": "XXg",
+    "fat": "XXg"
+  }
+}`;
+
+export class GeminiService {
+  static async generateRecipes(preferences: { useExpiring: boolean }): Promise<Recipe[]> {
+    try {
+      const ingredients = await ingredientDb.getAll();
+      const expiringIngredients = preferences.useExpiring ? 
+        await ingredientDb.getExpiringSoon(5) : [];
+
+      const availableIngredients = ingredients.map(i => i.name);
+      const expiringIngredientNames = expiringIngredients.map(i => i.name);
+
+      const prompt = `${SYSTEM_PROMPT}\n
+        Generate exactly 3 recipes using these ingredients:
+        Available: ${availableIngredients.join(', ')}
+        ${expiringIngredientNames.length > 0 ? `\nExpiring soon: ${expiringIngredientNames.join(', ')}` : ''}
+        
+        Important:
+        1. Use ingredients that are expiring soon when possible
+        2. Response must be a valid JSON array
+        3. Do not include any additional text or formatting
+        4. Follow the exact JSON structure provided above`;
+
+      console.log('=== Gemini Prompt ===');
+      console.log(prompt);
+      console.log('===================');
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash-thinking-exp-01-21',
+        contents: prompt
+      });
+
+      let textContent = response.text;
+
+      console.log('=== Gemini Response ===');
+      console.log(textContent);
+      console.log('===================');
+      
+      // Clean up the response to ensure valid JSON
+      textContent = textContent.trim();
+      if (!textContent.startsWith('[')) {
+        // Find the first [ character
+        const startIndex = textContent.indexOf('[');
+        if (startIndex !== -1) {
+          textContent = textContent.substring(startIndex);
+        }
+      }
+      if (!textContent.endsWith(']')) {
+        // Find the last ] character
+        const endIndex = textContent.lastIndexOf(']');
+        if (endIndex !== -1) {
+          textContent = textContent.substring(0, endIndex + 1);
+        }
+      }
+
+      // Validate JSON structure
+      let recipes;
+      try {
+        recipes = JSON.parse(textContent);
+        if (!Array.isArray(recipes)) {
+          throw new Error('Response is not an array');
+        }
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        return MockGeminiService.generateRecipes();
+      }
+      
+      // Add IDs and image URLs to the recipes
+      const processedRecipes = recipes.map((recipe: any, index: number) => ({
+        ...recipe,
+        id: `gemini-${Date.now()}-${index}`,
+        imageUrl: '/api/placeholder/400/200'
+      }));
+
+      return await RecipeMatcherService.matchRecipes(processedRecipes);
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      return MockGeminiService.generateRecipes();
+    }
+  }
+}
+
+// Keep mock recipes for testing and fallback
 const MOCK_RECIPES = [
   {
     id: '1',

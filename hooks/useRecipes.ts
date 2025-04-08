@@ -1,6 +1,6 @@
 // hooks/useRecipes.ts
 import { useState, useCallback } from 'react';
-import { MockGeminiService, type Recipe } from '@/services/api/recipeGenerationService';
+import { GeminiService, type Recipe } from '@/services/api/recipeGenerationService';
 
 export interface RecipePreferences {
   mealType: 'breakfast' | 'lunch-dinner';
@@ -22,7 +22,7 @@ export const useRecipes = () => {
     setError(null);
 
     try {
-      const generatedRecipes = await MockGeminiService.generateRecipes();
+      const generatedRecipes = await GeminiService.generateRecipes(preferences);
       setRecipes(generatedRecipes);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate recipes');
