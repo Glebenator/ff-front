@@ -72,7 +72,7 @@ export default function ConnectionStatus({
   
   const mqttStatusIcon = isConnected 
     ? { icon: 'wifi', color: theme.colors.status.success }
-    : { icon: 'wifi-off', color: theme.colors.status.error };
+    : { icon: 'wifi-outline', color: theme.colors.status.error };
     
   const piStatusIcon = getStatusIcon(piStatus);
 

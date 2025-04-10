@@ -1,170 +1,237 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, ActivityIndicator } from 'react-native';
+import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
-import { RecipePreferences } from '@/hooks/useRecipes';
-import MealTypeSelector from './MealTypeSelector';
-import PreferenceGrid from './PreferenceGrid';
+import { type RecipePreferences } from '@/hooks/useRecipes';
 
 interface PreferencesSectionProps {
   preferences: RecipePreferences;
   isLoading: boolean;
-  onMealTypeChange: (type: RecipePreferences['mealType']) => void;
   onPreferenceSelect: (key: keyof Omit<RecipePreferences, 'mealType'>) => void;
+  onMealTypeChange: (type: RecipePreferences['mealType']) => void;
   onGenerateRecipes: () => void;
 }
 
 export default function PreferencesSection({
   preferences,
   isLoading,
-  onMealTypeChange,
   onPreferenceSelect,
+  onMealTypeChange,
   onGenerateRecipes
 }: PreferencesSectionProps) {
-  // Preferences state - dropdown is collapsed by default
-  const [showPreferences, setShowPreferences] = useState(false);
-  
-  // Animation
-  const animation = useRef(new Animated.Value(0)).current;
-
-  // Toggle preferences dropdown with animation
-  const togglePreferences = useCallback(() => {
-    setShowPreferences(!showPreferences);
-    Animated.timing(animation, {
-      toValue: !showPreferences ? 1 : 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [showPreferences, animation]);
-
-  // Animation interpolation for dropdown height
-  const heightInterpolate = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 540], // Adjust this height as needed
-  });
-
-  const selectedFiltersCount = Object.values(preferences).filter(Boolean).length - 1;
-
   return (
-    <View style={styles.preferencesSection}>
-      <View style={[sharedStyles.card, styles.preferencesCard]}>
-        {/* Preferences Toggle Header */}
-        <Pressable 
-          onPress={togglePreferences}
-          style={styles.preferencesHeader}
-        >
-          <View style={styles.preferencesHeaderContent}>
-            <Ionicons
-              name="options-outline"
-              size={20}
-              color={theme.colors.text.primary}
-            />
-            <Text style={styles.preferencesHeaderText}>
-              Recipe Preferences {selectedFiltersCount > 0 && `(${selectedFiltersCount} selected)`}
-            </Text>
-          </View>
-          <Ionicons 
-            name={showPreferences ? "chevron-up" : "chevron-down"} 
-            size={20} 
-            color={theme.colors.text.secondary} 
-          />
-        </Pressable>
-        
-        {/* Animated Dropdown Content */}
-        <Animated.View style={{ height: heightInterpolate, overflow: 'hidden' }}>
-          {/* Meal Type Selection */}
-          <MealTypeSelector 
-            selectedMealType={preferences.mealType}
-            onMealTypeChange={onMealTypeChange}
-          />
-
-          <View style={styles.filterSeparator} />
-
-          {/* Preferences Grid */}
-          <Text style={styles.sectionLabel}>Dietary Preferences</Text>
-          <PreferenceGrid 
-            preferences={preferences}
-            onPreferenceSelect={onPreferenceSelect}
-          />
-        </Animated.View>
-
-        {/* Generate Button - Always Visible */}
-        <Pressable
-          style={[styles.generateButton, isLoading && styles.generateButtonDisabled]}
-          onPress={onGenerateRecipes}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <ActivityIndicator color={theme.colors.text.primary} />
-              <Text style={styles.generateButtonText}>
-                Generating recipes...
-              </Text>
-            </>
-          ) : (
-            <>
-              <Ionicons 
-                name="sparkles" 
-                size={20} 
-                color={theme.colors.background.primary} 
-              />
-              <Text style={styles.generateButtonText}>
-                Generate New Recipes
-              </Text>
-            </>
-          )}
-        </Pressable>
+    <View style={styles.container}>
+      <Text style={sharedStyles.subtitle as any}>Meal Type</Text>
+      <View style={styles.mealTypeRow}>
+        <MealTypeButton
+          title="Breakfast"
+          active={preferences.mealType === 'breakfast'}
+          onPress={() => onMealTypeChange('breakfast')}
+        />
+        <MealTypeButton
+          title="Lunch/Dinner"
+          active={preferences.mealType === 'lunch-dinner'}
+          onPress={() => onMealTypeChange('lunch-dinner')}
+        />
       </View>
+
+      <Text style={[sharedStyles.subtitle as any, styles.preferencesTitle]}>Preferences</Text>
+      <View style={styles.preferencesRow}>
+        <PreferenceButton 
+          title="Quick Meals"
+          icon="timer-outline"
+          active={preferences.quickMeals}
+          onPress={() => onPreferenceSelect('quickMeals')}
+        />
+        <PreferenceButton 
+          title="Use Expiring"
+          icon="alert-circle-outline"
+          active={preferences.useExpiring}
+          onPress={() => onPreferenceSelect('useExpiring')}
+        />
+        <PreferenceButton 
+          title="High Protein"
+          icon="fitness-outline"
+          active={preferences.proteinPlus}
+          onPress={() => onPreferenceSelect('proteinPlus')}
+        />
+      </View>
+      <View style={styles.preferencesRow}>
+        <PreferenceButton 
+          title="Min Shopping"
+          icon="cart-outline"
+          active={preferences.minimalShopping}
+          onPress={() => onPreferenceSelect('minimalShopping')}
+        />
+        <PreferenceButton 
+          title="Vegetarian"
+          icon="leaf-outline"
+          active={preferences.vegetarian}
+          onPress={() => onPreferenceSelect('vegetarian')}
+        />
+        <PreferenceButton 
+          title="Healthy"
+          icon="heart-outline"
+          active={preferences.healthy}
+          onPress={() => onPreferenceSelect('healthy')}
+        />
+      </View>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.generateButton,
+          pressed && styles.generateButtonPressed,
+          isLoading && styles.generateButtonDisabled
+        ]}
+        onPress={onGenerateRecipes}
+        disabled={isLoading}
+      >
+        <Ionicons 
+          name="restaurant-outline" 
+          size={20} 
+          color={theme.colors.background.primary} 
+        />
+        <Text style={styles.generateButtonText}>
+          {isLoading ? 'Generating...' : 'Generate New Recipes'}
+        </Text>
+      </Pressable>
     </View>
   );
 }
 
+interface MealTypeButtonProps {
+  title: string;
+  active: boolean;
+  onPress: () => void;
+}
+
+function MealTypeButton({ title, active, onPress }: MealTypeButtonProps) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.mealTypeButton,
+        active && styles.activeMealType,
+        pressed && styles.pressedButton
+      ]}
+      onPress={onPress}
+    >
+      <Text style={[
+        styles.mealTypeText,
+        active && styles.activeMealTypeText
+      ]}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+}
+
+interface PreferenceButtonProps {
+  title: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  active: boolean;
+  onPress: () => void;
+}
+
+function PreferenceButton({ title, icon, active, onPress }: PreferenceButtonProps) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.preferenceButton,
+        active && styles.activePreference,
+        pressed && styles.pressedButton
+      ]}
+      onPress={onPress}
+    >
+      <Ionicons
+        name={icon}
+        size={20}
+        color={active ? theme.colors.background.primary : theme.colors.text.primary}
+      />
+      <Text style={[
+        styles.preferenceText,
+        active && styles.activePreferenceText
+      ]}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  preferencesSection: {
+  container: {
     padding: theme.spacing.md,
   },
-  preferencesCard: {
+  mealTypeRow: {
+    flexDirection: 'row',
+    marginTop: theme.spacing.sm,
     gap: theme.spacing.md,
   },
-  preferencesHeader: {
-    flexDirection: 'row',
+  mealTypeButton: {
+    flex: 1,
+    backgroundColor: theme.colors.background.tertiary,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.xs,
   },
-  preferencesHeaderContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
+  activeMealType: {
+    backgroundColor: theme.colors.primary,
   },
-  preferencesHeaderText: {
+  mealTypeText: {
     fontSize: theme.fontSize.md,
-    fontWeight: '600',
+    fontWeight: '500',
     color: theme.colors.text.primary,
   },
-  sectionLabel: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
+  activeMealTypeText: {
+    color: theme.colors.background.primary,
+  },
+  preferencesTitle: {
+    marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
   },
-  filterSeparator: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.primary,
-    marginVertical: theme.spacing.md,
+  preferencesRow: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.sm,
+  },
+  preferenceButton: {
+    flex: 1,
+    backgroundColor: theme.colors.background.tertiary,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  activePreference: {
+    backgroundColor: theme.colors.primary,
+  },
+  pressedButton: {
+    opacity: 0.8,
+  },
+  preferenceText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: '500',
+    color: theme.colors.text.primary,
+  },
+  activePreferenceText: {
+    color: theme.colors.background.primary,
   },
   generateButton: {
     backgroundColor: theme.colors.primary,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginTop: theme.spacing.lg,
     gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
+  },
+  generateButtonPressed: {
+    opacity: 0.8,
   },
   generateButtonDisabled: {
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.text.secondary,
+    opacity: 0.7,
   },
   generateButtonText: {
     color: theme.colors.background.primary,

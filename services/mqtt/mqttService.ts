@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Paho from 'paho-mqtt';
 import * as Device from 'expo-device';
+import { toastStore } from '@/services/toastStore'; // Import toastStore for notifications
 
 // Message format for MQTT messages
 export interface MqttMessage {
@@ -60,6 +61,9 @@ export class MqttService {
     lastHeartbeat: 0,
     raspberryPiStatus: 'unknown'
   };
+  private reconnectAttempts: number = 0;
+  private maxReconnectDelay: number = 30000; // Maximum delay of 30 seconds
+  private initialReconnectDelay: number = 1000; // Start with 1 second
   
   // Connection parameters
   private config: MqttConfig = {
@@ -174,6 +178,7 @@ export class MqttService {
         clearTimeout(this.reconnectTimeout);
         this.reconnectTimeout = null;
       }
+      this.reconnectAttempts = 0; // Reset attempts on manual reconnect
       this.connect();
     }
   }
@@ -189,6 +194,8 @@ export class MqttService {
       clearTimeout(this.heartbeatTimeout);
       this.heartbeatTimeout = null;
     }
+    
+    this.reconnectAttempts = 0; // Reset attempts on disconnect
     
     if (this.client && this.isConnectedState) {
       try {
@@ -289,7 +296,9 @@ export class MqttService {
   private handleConnect = () => {
     console.log('MQTT Connected!');
     this.connecting = false;
+    this.reconnectAttempts = 0; // Reset attempts counter
     this.updateConnectionStatus(true);
+    toastStore.success('Connected to MQTT broker');
     
     // Subscribe to the configured topic with QoS 1
     if (this.client && this.config.topic) {
@@ -326,9 +335,14 @@ export class MqttService {
 
   // Handle connection failure
   private handleConnectFailure = (error: any) => {
-    console.error('MQTT connection failed:', error);
+    console.log('MQTT connection failed:', error);
     this.connecting = false;
     this.updateConnectionStatus(false);
+    
+    if (error?.errorMessage) {
+      toastStore.error('Connection failed: Network error');
+    }
+    
     this.scheduleReconnect();
     
     // Update Raspberry Pi status on connection failure
@@ -342,6 +356,7 @@ export class MqttService {
   private handleConnectionLost = (responseObject: any) => {
     if (responseObject.errorCode !== 0) {
       console.log(`MQTT connection lost: ${responseObject.errorMessage}`);
+      toastStore.warning('Connection lost, attempting to reconnect...');
     }
     this.updateConnectionStatus(false);
     this.connecting = false;
@@ -476,19 +491,29 @@ export class MqttService {
     }
   }
 
-  // Schedule a reconnection attempt
+  // Schedule a reconnection attempt with exponential backoff
   private scheduleReconnect(): void {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
     }
     
-    const delay = 5000; // 5 seconds
-    console.log(`Scheduling reconnection attempt in ${delay/1000} seconds...`);
+    // Calculate delay with exponential backoff
+    const delay = Math.min(
+      this.initialReconnectDelay * Math.pow(2, this.reconnectAttempts),
+      this.maxReconnectDelay
+    );
+    
+    console.log(`Scheduling reconnection attempt ${this.reconnectAttempts + 1} in ${delay/1000} seconds...`);
+    toastStore.info(`Reconnecting in ${Math.round(delay/1000)}s...`);
     
     this.reconnectTimeout = setTimeout(() => {
       if (!this.isConnectedState && !this.connecting) {
+        this.reconnectAttempts++;
         console.log('Attempting to reconnect to MQTT...');
-        this.connect();
+        this.connect().catch(() => {
+          // If connection fails, schedule next attempt
+          this.scheduleReconnect();
+        });
       }
     }, delay);
   }

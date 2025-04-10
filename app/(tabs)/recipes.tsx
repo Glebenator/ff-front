@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, ScrollView, Text, StyleSheet } from 'react-native';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
@@ -25,8 +25,18 @@ export default function RecipeScreen() {
   });
 
   // Hooks
-  const { recipes, isLoading, error, generateRecipes } = useRecipes();
+  const { recipes, recentRecipes, isLoading, error, generateRecipes, saveToRecent } = useRecipes();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
+
+  // Track tab changes to save recipes to recent
+  useEffect(() => {
+    const prevTab = activeTab;
+    return () => {
+      if (prevTab === 'suggested' && recipes.length > 0) {
+        saveToRecent();
+      }
+    };
+  }, [activeTab, recipes, saveToRecent]);
 
   // Handlers
   const handlePreferenceSelect = useCallback((key: keyof Omit<RecipePreferences, 'mealType'>) => {
@@ -45,7 +55,7 @@ export default function RecipeScreen() {
 
   const handleGenerate = useCallback(async () => {
     try {
-      await generateRecipes(preferences);
+      await generateRecipes(preferences, { accumulate: true });
     } catch (err) {
       console.error('Failed to generate recipes:', err);
     }
@@ -59,7 +69,7 @@ export default function RecipeScreen() {
       case 'suggested':
         return recipes || [];
       case 'recent':
-        return [];
+        return recentRecipes || [];
       default:
         return [];
     }
@@ -115,7 +125,7 @@ export default function RecipeScreen() {
         {activeTab === 'recent' && (
           <View style={styles.recipeListSection}>
             <RecipeList
-              recipes={[]}
+              recipes={getDisplayRecipes()}
               isLoading={false}
               error={null}
               onRetry={() => {}}

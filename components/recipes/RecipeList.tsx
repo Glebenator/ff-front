@@ -24,6 +24,30 @@ export default function RecipeList({
   onFavoriteToggle,
   isFavorite
 }: RecipeListProps) {
+  // Group recipes by their generation batch (using preferences as key)
+  const groupedRecipes = recipes.reduce((groups, recipe) => {
+    const prefsKey = recipe.generationPreferences ? 
+      JSON.stringify(recipe.generationPreferences) : 'unknown';
+    if (!groups[prefsKey]) {
+      groups[prefsKey] = [];
+    }
+    groups[prefsKey].push(recipe);
+    return groups;
+  }, {});
+
+  const renderPreferences = (preferences) => {
+    if (!preferences) return null;
+    const items = [];
+    if (preferences.mealType) items.push(preferences.mealType.replace('-', '/'));
+    if (preferences.quickMeals) items.push('Quick Meals');
+    if (preferences.useExpiring) items.push('Using Expiring');
+    if (preferences.proteinPlus) items.push('High Protein');
+    if (preferences.minimalShopping) items.push('Minimal Shopping');
+    if (preferences.vegetarian) items.push('Vegetarian');
+    if (preferences.healthy) items.push('Healthy');
+    return items.join(' • ');
+  };
+
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -70,14 +94,23 @@ export default function RecipeList({
   }
 
   return (
-    <View style={styles.list}>
-      {recipes.map(recipe => (
-        <RecipeCard
-          key={recipe.id}
-          recipe={recipe}
-          onFavoriteToggle={onFavoriteToggle}
-          isFavorite={isFavorite(recipe.id)}
-        />
+    <View>
+      {Object.entries(groupedRecipes).map(([prefsKey, groupRecipes]) => (
+        <View key={prefsKey} style={styles.recipeGroup}>
+          {prefsKey !== 'unknown' && (
+            <Text style={styles.preferencesText}>
+              {renderPreferences(JSON.parse(prefsKey))}
+            </Text>
+          )}
+          {groupRecipes.map((recipe: Recipe) => (
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              onFavoriteToggle={() => onFavoriteToggle(recipe)}
+              isFavorite={isFavorite(recipe.id)}
+            />
+          ))}
+        </View>
       ))}
     </View>
   );
@@ -121,5 +154,14 @@ const styles = StyleSheet.create({
     color: theme.colors.background.primary,
     fontSize: theme.fontSize.md,
     fontWeight: '600',
+  },
+  recipeGroup: {
+    marginBottom: theme.spacing.lg,
+  },
+  preferencesText: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.sm,
+    fontStyle: 'italic',
   },
 });

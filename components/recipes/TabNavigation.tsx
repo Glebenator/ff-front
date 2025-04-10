@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { theme } from '@/styles/theme';
 
 type TabType = 'suggested' | 'favorites' | 'recent';
@@ -14,78 +13,77 @@ export default function TabNavigation({ activeTab, onChangeTab }: TabNavigationP
   return (
     <View style={styles.tabContainer}>
       <TabButton 
-        label="Suggested" 
-        icon="bulb-outline"
-        isActive={activeTab === 'suggested'}
-        onPress={() => onChangeTab('suggested')}
+        title="Suggested" 
+        active={activeTab === 'suggested'} 
+        onPress={() => onChangeTab('suggested')} 
       />
       <TabButton 
-        label="Favorites" 
-        icon="heart-outline"
-        isActive={activeTab === 'favorites'}
-        onPress={() => onChangeTab('favorites')}
+        title="Favorites" 
+        active={activeTab === 'favorites'} 
+        onPress={() => onChangeTab('favorites')} 
       />
       <TabButton 
-        label="Recent" 
-        icon="time-outline"
-        isActive={activeTab === 'recent'}
-        onPress={() => onChangeTab('recent')}
+        title="Recent" 
+        active={activeTab === 'recent'} 
+        onPress={() => onChangeTab('recent')} 
       />
     </View>
   );
 }
 
 interface TabButtonProps {
-  label: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  isActive: boolean;
+  title: string;
+  active: boolean;
   onPress: () => void;
 }
 
-const TabButton = ({ label, icon, isActive, onPress }: TabButtonProps) => (
-  <Pressable 
-    style={[styles.tabButton, isActive && styles.tabButtonActive]}
-    onPress={onPress}
-  >
-    <Ionicons 
-      name={icon} 
-      size={18} 
-      color={isActive ? theme.colors.primary : theme.colors.text.secondary} 
-    />
-    <Text style={[
-      styles.tabButtonText,
-      isActive && styles.tabButtonTextActive
-    ]}>
-      {label}
-    </Text>
-  </Pressable>
-);
+function TabButton({ title, active, onPress }: TabButtonProps) {
+  return (
+    <Pressable 
+      style={({ pressed }) => [
+        styles.tabButton,
+        active && styles.activeTab,
+        pressed && styles.pressedTab
+      ]}
+      onPress={onPress}
+    >
+      <Text style={[
+        styles.tabText,
+        active && styles.activeTabText
+      ]}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+}
 
 const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderColor: theme.colors.border.primary,
-    height: 45,
+    backgroundColor: theme.colors.background.secondary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    margin: theme.spacing.md,
   },
   tabButton: {
     flex: 1,
-    flexDirection: 'row',
+    paddingVertical: theme.spacing.md,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
   },
-  tabButtonActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.primary,
+  activeTab: {
+    backgroundColor: theme.colors.primary,
   },
-  tabButtonText: {
-    fontSize: theme.fontSize.sm,
+  pressedTab: {
+    opacity: 0.8,
+  },
+  tabText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: '500',
     color: theme.colors.text.secondary,
   },
-  tabButtonTextActive: {
-    color: theme.colors.primary,
+  activeTabText: {
+    color: theme.colors.background.primary,
     fontWeight: '600',
   },
 });

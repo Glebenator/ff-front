@@ -2,11 +2,21 @@
 import { type MatchedRecipe, RecipeMatcherService } from '@/services/recipeMatcherService';
 import { GoogleGenAI } from '@google/genai';
 import { ingredientDb } from '@/services/database/ingredientDb';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Recipe extends MatchedRecipe {}
 
+export interface RecipePreferences {
+  useExpiring: boolean;
+  quickMeals?: boolean;
+  minimalShopping?: boolean;
+  vegetarian?: boolean;
+  healthy?: boolean;
+  proteinPlus?: boolean;
+}
+
 // Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'AIzaSyD9EEiNaydwaQKvEBvLeDsqtg7L3dmdFSQ' });
 
 const SYSTEM_PROMPT = `You are a cooking expert that generates recipes based on available ingredients. 
 Generate recipes that maximize the use of available ingredients, especially those that are expiring soon.
@@ -34,8 +44,41 @@ Always return recipes in the following JSON format:
   }
 }`;
 
+const RECENT_RECIPES_KEY = '@recent_recipes';
+const MAX_RECENT_RECIPES = 20;
+
+class RecentRecipesManager {
+  private static recentRecipes: Recipe[] = [];
+
+  static async loadRecentRecipes(): Promise<Recipe[]> {
+    try {
+      const stored = await AsyncStorage.getItem(RECENT_RECIPES_KEY);
+      if (stored) {
+        this.recentRecipes = JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Error loading recent recipes:', error);
+    }
+    return this.recentRecipes;
+  }
+
+  static async addRecipes(recipes: Recipe[]): Promise<void> {
+    // Add new recipes to the front of the list
+    this.recentRecipes = [...recipes, ...this.recentRecipes].slice(0, MAX_RECENT_RECIPES);
+    try {
+      await AsyncStorage.setItem(RECENT_RECIPES_KEY, JSON.stringify(this.recentRecipes));
+    } catch (error) {
+      console.error('Error saving recent recipes:', error);
+    }
+  }
+
+  static getRecentRecipes(): Recipe[] {
+    return this.recentRecipes;
+  }
+}
+
 export class GeminiService {
-  static async generateRecipes(preferences: { useExpiring: boolean }): Promise<Recipe[]> {
+  static async generateRecipes(preferences: RecipePreferences): Promise<Recipe[]> {
     try {
       const ingredients = await ingredientDb.getAll();
       const expiringIngredients = preferences.useExpiring ? 
@@ -44,16 +87,26 @@ export class GeminiService {
       const availableIngredients = ingredients.map(i => i.name);
       const expiringIngredientNames = expiringIngredients.map(i => i.name);
 
+      const dietaryPreferences = [
+        preferences.vegetarian ? 'vegetarian' : null,
+        preferences.healthy ? 'healthy and balanced' : null,
+        preferences.proteinPlus ? 'high protein' : null,
+      ].filter(Boolean).join(', ');
+
       const prompt = `${SYSTEM_PROMPT}\n
         Generate exactly 3 recipes using these ingredients:
         Available: ${availableIngredients.join(', ')}
         ${expiringIngredientNames.length > 0 ? `\nExpiring soon: ${expiringIngredientNames.join(', ')}` : ''}
         
-        Important:
-        1. Use ingredients that are expiring soon when possible
-        2. Response must be a valid JSON array
-        3. Do not include any additional text or formatting
-        4. Follow the exact JSON structure provided above`;
+        Important Requirements:
+        1. ${preferences.useExpiring ? 'Prioritize using ingredients that are expiring soon' : 'No specific ingredient priority'}
+        2. ${preferences.quickMeals ? 'Recipes must take under 30 minutes to prepare' : 'No time restriction'}
+        3. ${preferences.minimalShopping ? 'Minimize the use of ingredients not in the available list' : 'Can use additional ingredients as needed'}
+        4. ${dietaryPreferences ? `Recipes must be ${dietaryPreferences}` : 'No dietary restrictions'}
+        5. Response must be a valid JSON array
+        6. Follow the exact JSON structure provided above
+        7. Each recipe must include accurate cooking time and difficulty level
+        8. No additional text or formatting`;
 
       console.log('=== Gemini Prompt ===');
       console.log(prompt);
@@ -99,14 +152,23 @@ export class GeminiService {
         return MockGeminiService.generateRecipes();
       }
       
-      // Add IDs and image URLs to the recipes
+      // Add unique IDs, image URLs, and preferences to the recipes
       const processedRecipes = recipes.map((recipe: any, index: number) => ({
         ...recipe,
-        id: `gemini-${Date.now()}-${index}`,
-        imageUrl: '/api/placeholder/400/200'
+        id: `gemini-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`,
+        imageUrl: '/api/placeholder/400/200',
+        generationPreferences: { ...preferences }
       }));
 
+      // Save unique recent recipes
+      const existingRecipes = await RecentRecipesManager.loadRecentRecipes();
+      const uniqueNewRecipes = processedRecipes.filter(newRecipe => 
+        !existingRecipes.some(existing => existing.title === newRecipe.title)
+      );
+      await RecentRecipesManager.addRecipes(uniqueNewRecipes);
+
       return await RecipeMatcherService.matchRecipes(processedRecipes);
+      
     } catch (error) {
       console.error('Gemini API error:', error);
       return MockGeminiService.generateRecipes();
@@ -192,7 +254,7 @@ const MOCK_RECIPES = [
 ];
 
 export class MockGeminiService {
-  static async generateRecipes(): Promise<Recipe[]> {
+  static async generateRecipes(preferences?: RecipePreferences): Promise<Recipe[]> {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     
@@ -201,8 +263,42 @@ export class MockGeminiService {
       throw new Error('Failed to generate recipes');
     }
     
+    // Filter mock recipes based on preferences
+    let filteredRecipes = [...MOCK_RECIPES];
+    
+    if (preferences) {
+      if (preferences.quickMeals) {
+        filteredRecipes = filteredRecipes.filter(recipe => 
+          parseInt(recipe.cookingTime) <= 30
+        );
+      }
+      
+      if (preferences.vegetarian) {
+        // Simple check for vegetarian recipes (no meat-related words)
+        const meatWords = ['chicken', 'beef', 'pork', 'fish', 'meat', 'seafood'];
+        filteredRecipes = filteredRecipes.filter(recipe => 
+          !meatWords.some(word => 
+            recipe.title.toLowerCase().includes(word) ||
+            recipe.description.toLowerCase().includes(word)
+          )
+        );
+      }
+      
+      if (preferences.proteinPlus) {
+        // Filter for high protein recipes (>12g)
+        filteredRecipes = filteredRecipes.filter(recipe => 
+          parseInt(recipe.nutritionalInfo.protein) >= 12
+        );
+      }
+    }
+    
+    // Ensure we have at least one recipe
+    if (filteredRecipes.length === 0) {
+      filteredRecipes = [MOCK_RECIPES[0]];
+    }
+    
     // Match recipes against user's ingredients
-    const matchedRecipes = await RecipeMatcherService.matchRecipes(MOCK_RECIPES);
+    const matchedRecipes = await RecipeMatcherService.matchRecipes(filteredRecipes);
     return matchedRecipes;
   }
 }
