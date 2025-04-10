@@ -61,10 +61,17 @@ export default function RecipeList({
 
       return groups;
     } else {
-      // Group by preferences as before
+      // Group by preferences, safely handle JSON parsing
       return recipes.reduce((groups, recipe) => {
-        const prefsKey = recipe.generationPreferences ? 
-          JSON.stringify(recipe.generationPreferences) : 'unknown';
+        let prefsKey;
+        try {
+          prefsKey = recipe.generationPreferences ? 
+            JSON.stringify(recipe.generationPreferences) : 'unknown';
+        } catch (error) {
+          prefsKey = 'unknown';
+          console.warn('Failed to stringify preferences:', error);
+        }
+        
         if (!groups[prefsKey]) {
           groups[prefsKey] = [];
         }
@@ -74,7 +81,17 @@ export default function RecipeList({
     }
   };
 
-  const renderPreferences = (preferences) => {
+  const renderPreferences = (prefsString) => {
+    if (!prefsString || prefsString === 'unknown') return 'No preferences';
+    
+    let preferences;
+    try {
+      preferences = JSON.parse(prefsString);
+    } catch (error) {
+      console.warn('Failed to parse preferences:', error);
+      return 'Invalid preferences';
+    }
+
     if (!preferences) return null;
     const items = [];
     if (preferences.mealType) items.push(preferences.mealType.replace('-', '/'));
@@ -84,7 +101,7 @@ export default function RecipeList({
     if (preferences.minimalShopping) items.push('Minimal Shopping');
     if (preferences.vegetarian) items.push('Vegetarian');
     if (preferences.healthy) items.push('Healthy');
-    return items.join(' • ');
+    return items.join(' • ') || 'No preferences';
   };
 
   if (isLoading) {
@@ -142,7 +159,7 @@ export default function RecipeList({
             styles.groupHeader,
             mode === 'recent' && styles.dateHeader
           ]}>
-            {mode === 'recent' ? groupKey : renderPreferences(JSON.parse(groupKey))}
+            {mode === 'recent' ? groupKey : renderPreferences(groupKey)}
           </Text>
           {(groupRecipes as Recipe[]).map((recipe: Recipe) => (
             <RecipeCard
