@@ -16,7 +16,7 @@ export interface RecipePreferences {
 }
 
 // Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'AIzaSyD9EEiNaydwaQKvEBvLeDsqtg7L3dmdFSQ' });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'lol leaked the key last time' });
 
 const SYSTEM_PROMPT = `You are a cooking expert that generates recipes based on available ingredients. 
 Generate recipes that maximize the use of available ingredients, especially those that are expiring soon.
