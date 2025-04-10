@@ -131,6 +131,7 @@ export default function RecipeScreen() {
               onRetry={() => {}}
               onFavoriteToggle={toggleFavorite}
               isFavorite={isFavorite}
+              mode="recent"
             />
           </View>
         )}

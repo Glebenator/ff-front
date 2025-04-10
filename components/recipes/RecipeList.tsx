@@ -14,6 +14,7 @@ interface RecipeListProps {
   onRetry: () => void;
   onFavoriteToggle: (recipe: Recipe) => void;
   isFavorite: (recipeId: string) => boolean;
+  mode?: 'default' | 'recent';
 }
 
 export default function RecipeList({
@@ -22,18 +23,56 @@ export default function RecipeList({
   error,
   onRetry,
   onFavoriteToggle,
-  isFavorite
+  isFavorite,
+  mode = 'default'
 }: RecipeListProps) {
-  // Group recipes by their generation batch (using preferences as key)
-  const groupedRecipes = recipes.reduce((groups, recipe) => {
-    const prefsKey = recipe.generationPreferences ? 
-      JSON.stringify(recipe.generationPreferences) : 'unknown';
-    if (!groups[prefsKey]) {
-      groups[prefsKey] = [];
+  const groupRecipes = () => {
+    if (mode === 'recent') {
+      // Group by date added
+      const groups = {};
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const lastWeek = new Date(today);
+      lastWeek.setDate(lastWeek.getDate() - 7);
+
+      recipes.forEach(recipe => {
+        const recipeDate = new Date(recipe.generationPreferences?.timestamp || Date.now());
+        let groupKey;
+
+        if (recipeDate >= today) {
+          groupKey = 'Today';
+        } else if (recipeDate >= yesterday) {
+          groupKey = 'Yesterday';
+        } else if (recipeDate >= lastWeek) {
+          groupKey = 'Last 7 Days';
+        } else {
+          groupKey = 'Older';
+        }
+
+        if (!groups[groupKey]) {
+          groups[groupKey] = [];
+        }
+        groups[groupKey].push(recipe);
+      });
+
+      return groups;
+    } else {
+      // Group by preferences as before
+      return recipes.reduce((groups, recipe) => {
+        const prefsKey = recipe.generationPreferences ? 
+          JSON.stringify(recipe.generationPreferences) : 'unknown';
+        if (!groups[prefsKey]) {
+          groups[prefsKey] = [];
+        }
+        groups[prefsKey].push(recipe);
+        return groups;
+      }, {});
     }
-    groups[prefsKey].push(recipe);
-    return groups;
-  }, {});
+  };
 
   const renderPreferences = (preferences) => {
     if (!preferences) return null;
@@ -93,21 +132,25 @@ export default function RecipeList({
     );
   }
 
+  const groupedRecipes = groupRecipes();
+
   return (
     <View>
-      {Object.entries(groupedRecipes).map(([prefsKey, groupRecipes]) => (
-        <View key={prefsKey} style={styles.recipeGroup}>
-          {prefsKey !== 'unknown' && (
-            <Text style={styles.preferencesText}>
-              {renderPreferences(JSON.parse(prefsKey))}
-            </Text>
-          )}
-          {groupRecipes.map((recipe: Recipe) => (
+      {Object.entries(groupedRecipes).map(([groupKey, groupRecipes]) => (
+        <View key={groupKey} style={styles.recipeGroup}>
+          <Text style={[
+            styles.groupHeader,
+            mode === 'recent' && styles.dateHeader
+          ]}>
+            {mode === 'recent' ? groupKey : renderPreferences(JSON.parse(groupKey))}
+          </Text>
+          {(groupRecipes as Recipe[]).map((recipe: Recipe) => (
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
-              onFavoriteToggle={() => onFavoriteToggle(recipe)}
+              onFavoriteToggle={onFavoriteToggle}
               isFavorite={isFavorite(recipe.id)}
+              compact={mode === 'recent'}
             />
           ))}
         </View>
@@ -163,5 +206,17 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.sm,
     fontStyle: 'italic',
+  },
+  groupHeader: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.sm,
+    fontStyle: 'italic',
+  },
+  dateHeader: {
+    fontSize: theme.fontSize.md,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    fontStyle: 'normal',
   },
 });

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
@@ -20,6 +20,22 @@ export default function PreferencesSection({
   onMealTypeChange,
   onGenerateRecipes
 }: PreferencesSectionProps) {
+  const [isPreferencesExpanded, setIsPreferencesExpanded] = useState(false);
+  const animation = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(animation, {
+      toValue: isPreferencesExpanded ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isPreferencesExpanded]);
+
+  const heightInterpolate = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 220], // Adjust this value based on content height
+  });
+
   return (
     <View style={styles.container}>
       <Text style={sharedStyles.subtitle as any}>Meal Type</Text>
@@ -36,47 +52,64 @@ export default function PreferencesSection({
         />
       </View>
 
-      <Text style={[sharedStyles.subtitle as any, styles.preferencesTitle]}>Preferences</Text>
-      <View style={styles.preferencesRow}>
-        <PreferenceButton 
-          title="Quick Meals"
-          icon="timer-outline"
-          active={preferences.quickMeals}
-          onPress={() => onPreferenceSelect('quickMeals')}
-        />
-        <PreferenceButton 
-          title="Use Expiring"
-          icon="alert-circle-outline"
-          active={preferences.useExpiring}
-          onPress={() => onPreferenceSelect('useExpiring')}
-        />
-        <PreferenceButton 
-          title="High Protein"
-          icon="fitness-outline"
-          active={preferences.proteinPlus}
-          onPress={() => onPreferenceSelect('proteinPlus')}
-        />
-      </View>
-      <View style={styles.preferencesRow}>
-        <PreferenceButton 
-          title="Min Shopping"
-          icon="cart-outline"
-          active={preferences.minimalShopping}
-          onPress={() => onPreferenceSelect('minimalShopping')}
-        />
-        <PreferenceButton 
-          title="Vegetarian"
-          icon="leaf-outline"
-          active={preferences.vegetarian}
-          onPress={() => onPreferenceSelect('vegetarian')}
-        />
-        <PreferenceButton 
-          title="Healthy"
-          icon="heart-outline"
-          active={preferences.healthy}
-          onPress={() => onPreferenceSelect('healthy')}
-        />
-      </View>
+      <Pressable 
+        style={styles.preferencesHeader}
+        onPress={() => setIsPreferencesExpanded(!isPreferencesExpanded)}
+      >
+        <View style={styles.preferencesHeaderContent}>
+          <Text style={[sharedStyles.subtitle as any]}>Preferences</Text>
+          <Ionicons
+            name={isPreferencesExpanded ? "chevron-up" : "chevron-down"}
+            size={20}
+            color={theme.colors.text.primary}
+          />
+        </View>
+      </Pressable>
+
+      <Animated.View style={[styles.preferencesContent, { height: heightInterpolate }]}>
+        <View style={styles.preferencesInner}>
+          <View style={styles.preferencesRow}>
+            <PreferenceButton 
+              title="Quick Meals"
+              icon="timer-outline"
+              active={preferences.quickMeals}
+              onPress={() => onPreferenceSelect('quickMeals')}
+            />
+            <PreferenceButton 
+              title="Use Expiring"
+              icon="alert-circle-outline"
+              active={preferences.useExpiring}
+              onPress={() => onPreferenceSelect('useExpiring')}
+            />
+            <PreferenceButton 
+              title="High Protein"
+              icon="fitness-outline"
+              active={preferences.proteinPlus}
+              onPress={() => onPreferenceSelect('proteinPlus')}
+            />
+          </View>
+          <View style={styles.preferencesRow}>
+            <PreferenceButton 
+              title="Min Shopping"
+              icon="cart-outline"
+              active={preferences.minimalShopping}
+              onPress={() => onPreferenceSelect('minimalShopping')}
+            />
+            <PreferenceButton 
+              title="Vegetarian"
+              icon="leaf-outline"
+              active={preferences.vegetarian}
+              onPress={() => onPreferenceSelect('vegetarian')}
+            />
+            <PreferenceButton 
+              title="Healthy"
+              icon="heart-outline"
+              active={preferences.healthy}
+              onPress={() => onPreferenceSelect('healthy')}
+            />
+          </View>
+        </View>
+      </Animated.View>
 
       <Pressable
         style={({ pressed }) => [
@@ -166,6 +199,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: theme.spacing.sm,
     gap: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   mealTypeButton: {
     flex: 1,
@@ -185,9 +219,19 @@ const styles = StyleSheet.create({
   activeMealTypeText: {
     color: theme.colors.background.primary,
   },
-  preferencesTitle: {
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
+  preferencesHeader: {
+    paddingVertical: theme.spacing.sm,
+  },
+  preferencesHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  preferencesContent: {
+    overflow: 'hidden',
+  },
+  preferencesInner: {
+    paddingTop: theme.spacing.sm,
   },
   preferencesRow: {
     flexDirection: 'row',
