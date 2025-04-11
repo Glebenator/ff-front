@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ingredientDb } from '@/services/database/ingredientDb';
@@ -8,7 +8,16 @@ import { sharedStyles } from '@/styles/sharedStyles';
 import { 
   ExpiryStatus, 
   StatusInfoType, 
-  StatusCardProps, 
+  StatusCardProps,
+  IngredientType,
+  RecipeType,
+  MealType,
+  RecipeCardProps,
+  StatusInfo,
+  RecipeData,
+  RecipeIdeasProps,
+  RecipeHeaderProps,
+
   QuickActionButtonProps 
 } from '@/types/types';
 
@@ -111,28 +120,105 @@ const WellMaintainedCard: React.FC = () => (
   </View>
 );
 
-const RecipeIdeas: React.FC = () => (
-  <View style={styles.card}>
+const RecipeIdeas: React.FC = () => {
+  const [recipe, setRecipe] = useState<RecipeData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const fetchRecipe = async (mealType: MealType, expiringIngredients: IngredientType[]): Promise<RecipeData> => {
+    // Placeholder for Gemini API call
+    console.log("Fetching recipe for meal type:", mealType);
+    console.log("Prioritizing ingredients:", expiringIngredients);
+    
+    // Mock recipe data
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          name: "Mock Recipe",
+          description: "A delicious mock recipe.",
+          estimatedTime: "30-45 min",
+          ingredients: ["Ingredient 1", "Ingredient 2", "Ingredient 3"],
+          id:'1'
+        });
+      }, 1000);
+    });
+  };
+
+  const getCurrentMealType = (): MealType => {
+    const currentHour = new Date().getHours();
+    if (currentHour >= 5 && currentHour < 11) {
+      return 'breakfast';
+    } else if (currentHour >= 11 && currentHour < 15) {
+      return 'lunch';
+    } else if (currentHour >= 15 && currentHour < 21) {
+      return 'dinner';
+    } else {
+      return 'snack';
+    }
+  };
+
+  useEffect(() => {
+    const loadRecipe = async () => {
+      setIsLoading(true);
+      const mealType = getCurrentMealType();
+      const expiringIngredients = ingredientDb.getExpiringSoon(3);
+      const recipeData = await fetchRecipe(mealType, expiringIngredients);
+      setRecipe(recipeData);
+      setIsLoading(false);
+    };
+    loadRecipe();
+  }, []);
+
+  return (
+    <>
+      {isLoading ? (
+        <View style={[styles.card, styles.loadingCard]}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading recipe...</Text>
+        </View>
+      ) : recipe ? (
+        <RecipeCard recipe={recipe} />
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.errorText}>Could not load Recipe</Text>
+        </View>
+      )}
+    </>
+  );
+};
+
+const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
+  return(
+    <Pressable
+      style={[styles.card]}
+      onPress={() => router.push(`/recipe/${recipe.id}`)}
+    >
+    <RecipeHeader title="Recipe Ideas"/>
+      <Text style={styles.recipeSubtitle}>{recipe.description}</Text>
+      <Text style={styles.recipeTime}>
+        <Ionicons name="time-outline" size={16} color={theme.colors.text.secondary} />
+        {' '}{recipe.estimatedTime}
+      </Text>
+      <View style={styles.recipeTags}>
+        {recipe.ingredients.map((ingredient, index) => (
+          <Text key={index} style={styles.recipeTag}>{ingredient}</Text>
+        ))}
+      </View>
+      <Text style={styles.viewAllLink}>View recipe →</Text>
+    </Pressable>
+  )
+};
+
+const RecipeHeader: React.FC<RecipeHeaderProps> = ({ title }) => {
+  return (
     <View style={styles.recipeHeader}>
       <View style={styles.recipeTitleContainer}>
         <Ionicons name="restaurant" size={24} color={theme.colors.primary} />
-        <Text style={styles.cardTitle}>Recipe Ideas</Text>
+        <Text style={styles.cardTitle}>{title}</Text>
       </View>
-      <Text style={styles.viewAllText}>View All</Text>
     </View>
-    <Text style={styles.recipeSubtitle}>Quick Recipes with Your Ingredients</Text>
-    <Text style={styles.recipeCount}>3 possible</Text>
-    <Text style={styles.recipeTime}>
-      <Ionicons name="time-outline" size={16} color={theme.colors.text.secondary} />
-      {' '}15-30 min recipes you can make now
-    </Text>
-    <View style={styles.recipeTags}>
-      <Text style={styles.recipeTag}>Pasta</Text>
-      <Text style={styles.recipeTag}>Salad</Text>
-      <Text style={styles.recipeTag}>+1 more</Text>
-    </View>
-  </View>
-);
+  );
+};
+
 
 const QuickActions: React.FC = () => (
   <View style={styles.quickActionsSection}>
@@ -195,6 +281,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.sm,
   },
+  loadingCard:{
+    justifyContent:'center',
+    alignItems:'center'
+  },
   cardTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: 'bold',
@@ -226,13 +316,13 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   viewAllText: {
-    color: theme.colors.primary,
-    fontSize: theme.fontSize.md,
-    fontWeight: '500',
-  },
+      color: theme.colors.primary,
+      fontSize: theme.fontSize.md,
+      fontWeight: '500',
+    },
   recipeSubtitle: {
-    fontSize: theme.fontSize.lg,
-    color: theme.colors.text.primary,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xs,
   },
   recipeCount: {
@@ -256,6 +346,14 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.sm,
     color: theme.colors.text.primary,
     fontSize: theme.fontSize.md,
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    color: theme.colors.text.primary,
+  },
+  errorText: {
+    fontSize: theme.fontSize.lg,
+    color: theme.colors.status.error,
   },
   quickActionsSection: {
     gap: theme.spacing.md,
@@ -297,3 +395,10 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
   },
 });
+
+// Placeholder for the RecipeDetail screen
+export const RecipeDetail: React.FC = () => (
+  <View>
+    <Text>Recipe Detail Screen</Text>
+  </View>
+);
