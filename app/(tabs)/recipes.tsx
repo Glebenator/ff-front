@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, ScrollView, Text, StyleSheet } from 'react-native';
+import { View, ScrollView, Text, StyleSheet, RefreshControl } from 'react-native';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import { useRecipes } from '@/hooks/useRecipes';
@@ -25,7 +25,17 @@ export default function RecipeScreen() {
   });
 
   // Hooks
-  const { recipes, recentRecipes, isLoading, error, generateRecipes, saveToRecent } = useRecipes();
+  const { 
+    recipes, 
+    recentRecipes, 
+    isLoading, 
+    isRefreshing,
+    error, 
+    generateRecipes, 
+    saveToRecent,
+    refreshRecipes 
+  } = useRecipes();
+  
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
 
   // Track tab changes to save recipes to recent
@@ -60,6 +70,11 @@ export default function RecipeScreen() {
       console.error('Failed to generate recipes:', err);
     }
   }, [generateRecipes, preferences]);
+  
+  // Handle pull-to-refresh
+  const handleRefresh = useCallback(() => {
+    refreshRecipes();
+  }, [refreshRecipes]);
 
   // Get recipes based on active tab
   const getDisplayRecipes = () => {
@@ -82,7 +97,17 @@ export default function RecipeScreen() {
         onChangeTab={setActiveTab} 
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
+        }
+      >
         {activeTab === 'suggested' && (
           <>
             <PreferencesSection 

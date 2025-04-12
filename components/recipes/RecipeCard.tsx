@@ -22,11 +22,17 @@ export default function RecipeCard({
 }: RecipeCardProps) {
   const [showDetail, setShowDetail] = useState(false);
 
+  // Helper function to get the color based on match percentage
   const getMatchColor = (percentage: number) => {
     if (percentage >= 80) return theme.colors.status.success;
     if (percentage >= 50) return theme.colors.primary;
     return theme.colors.status.warning;
   };
+  
+  // Calculate actual match percentage dynamically (in case it's not already calculated)
+  const matchPercentage = recipe.matchPercentage ?? 
+    (recipe.matchingIngredients.length / 
+      (recipe.matchingIngredients.length + recipe.missingIngredients.length) * 100);
   
   // New ingredient badge component
   const IngredientBadge = ({ count, type }: { count: number, type: 'matching' | 'missing' }) => {
@@ -71,8 +77,8 @@ export default function RecipeCard({
           
           {!compact && (
             <View style={styles.matchBadge}>
-              <Text style={[styles.matchText, { color: getMatchColor(recipe.matchPercentage) }]}>
-                {Math.round(recipe.matchPercentage)}%
+              <Text style={[styles.matchText, { color: getMatchColor(matchPercentage) }]}>
+                {Math.round(matchPercentage)}%
               </Text>
             </View>
           )}

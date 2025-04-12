@@ -145,4 +145,12 @@ export class RecipeMatcherService {
     // Sort recipes by match percentage (highest first)
     return matchedRecipes.sort((a, b) => b.matchPercentage - a.matchPercentage);
   }
+
+  /**
+   * Recalculates match percentages for recipes based on current ingredient inventory
+   * Call this function whenever the user's ingredients change or when viewing recipes
+   */
+  static async refreshRecipeMatches(recipes: MatchedRecipe[]): Promise<MatchedRecipe[]> {
+    return this.matchRecipes(recipes);
+  }
 }
