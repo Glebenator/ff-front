@@ -12,13 +12,17 @@ interface RecipeCardProps {
   onFavoriteToggle: (recipe: Recipe) => void;
   isFavorite: boolean;
   compact?: boolean;
+  allowDelete?: boolean;
+  onDelete?: () => void;
 }
 
 export default function RecipeCard({ 
   recipe, 
   onFavoriteToggle,
   isFavorite,
-  compact = false
+  compact = false,
+  allowDelete = false,
+  onDelete
 }: RecipeCardProps) {
   const [showDetail, setShowDetail] = useState(false);
 
@@ -84,19 +88,39 @@ export default function RecipeCard({
           )}
           
           {/* Favorite Button */}
-          <Pressable 
-            style={styles.favoriteButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              onFavoriteToggle(recipe);
-            }}
-          >
-            <Ionicons 
-              name={isFavorite ? "heart" : "heart-outline"} 
-              size={24} 
-              color={isFavorite ? theme.colors.status.error : theme.colors.text.secondary} 
-            />
-          </Pressable>
+          <View style={styles.cardActions}>
+            {/* Delete Button - only shown when allowDelete is true */}
+            {allowDelete && onDelete && (
+              <Pressable 
+                style={styles.actionButton}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+              >
+                <Ionicons 
+                  name="trash-outline" 
+                  size={22} 
+                  color={theme.colors.status.error} 
+                />
+              </Pressable>
+            )}
+            
+            {/* Favorite Button */}
+            <Pressable 
+              style={styles.actionButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                onFavoriteToggle(recipe);
+              }}
+            >
+              <Ionicons 
+                name={isFavorite ? "heart" : "heart-outline"} 
+                size={24} 
+                color={isFavorite ? theme.colors.status.error : theme.colors.text.secondary} 
+              />
+            </Pressable>
+          </View>
         </View>
         
         {/* Card Content */}
@@ -195,10 +219,14 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     fontWeight: 'bold',
   },
-  favoriteButton: {
+  cardActions: {
     position: 'absolute',
     top: 10,
     right: 10,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  actionButton: {
     backgroundColor: 'rgba(30, 30, 30, 0.8)',
     borderRadius: 20,
     padding: 6,

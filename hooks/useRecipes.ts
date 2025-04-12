@@ -80,6 +80,11 @@ export const useRecipes = () => {
       saveRecentRecipes();
     }
   }, [recentRecipes]);
+  
+  // Function to remove a recipe from recent list
+  const removeFromRecent = useCallback((recipeId: string) => {
+    setRecentRecipes(prev => prev.filter(recipe => recipe.id !== recipeId));
+  }, []);
 
   // Monitor ingredient database for changes
   useEffect(() => {
@@ -94,13 +99,12 @@ export const useRecipes = () => {
           ...ingredients.map(ing => new Date(ing.dateAdded || 0).getTime())
         );
         
-        console.log('Latest ingredient update:', new Date(latestUpdate).toISOString());
-        console.log('Last recorded update:', lastIngredientUpdateTime ? 
-                   new Date(lastIngredientUpdateTime).toISOString() : 'none');
-        
-        // If we have a new update time, refresh recipes
+        // Only log and refresh if there's an actual change
         if (latestUpdate > lastIngredientUpdateTime) {
-          console.log('Ingredient changes detected, refreshing recipes...');
+          console.log('Ingredient changes detected!', {
+            'latest': new Date(latestUpdate).toISOString(),
+            'previous': lastIngredientUpdateTime ? new Date(lastIngredientUpdateTime).toISOString() : 'none'
+          });
           setLastIngredientUpdateTime(latestUpdate);
           refreshRecipes();
         }
@@ -109,8 +113,8 @@ export const useRecipes = () => {
       }
     };
 
-    // Set up polling interval to check for ingredient changes (every 5 seconds for faster detection)
-    const intervalId = setInterval(checkForIngredientChanges, 5000);
+    // Set up polling interval (every 15 seconds is frequent enough)
+    const intervalId = setInterval(checkForIngredientChanges, 15000);
     
     // Initial check
     checkForIngredientChanges();
@@ -121,18 +125,23 @@ export const useRecipes = () => {
   // Refresh recipe matches every time the screen is focused
   useFocusEffect(
     useCallback(() => {
-      console.log('🔎 Recipe screen focused, refreshing matches...');
+      // Don't log this, it happens frequently
       refreshRecipes();
     }, [refreshRecipes])
   );
 
   // Create a function to refresh recipe match percentages
   const refreshRecipes = useCallback(async () => {
-    console.log('🔄 Starting recipe refresh...');
+    // Only log when manually triggered (not during auto-updates)
+    const isManualRefresh = !isRefreshing;
+    if (isManualRefresh) {
+      console.log('🔄 Starting recipe refresh...');
+    }
+    
     setIsRefreshing(true);
     try {
       if (recipes.length > 0) {
-        console.log(`Refreshing ${recipes.length} primary recipes`);
+        if (isManualRefresh) console.log(`Refreshing ${recipes.length} primary recipes`);
         const updatedRecipes = await RecipeMatcherService.refreshRecipeMatches(recipes);
         
         // Create a new array to ensure state update triggers a re-render
@@ -150,7 +159,7 @@ export const useRecipes = () => {
       }
       
       if (recentRecipes.length > 0) {
-        console.log(`Refreshing ${recentRecipes.length} recent recipes`);
+        if (isManualRefresh) console.log(`Refreshing ${recentRecipes.length} recent recipes`);
         const updatedRecentRecipes = await RecipeMatcherService.refreshRecipeMatches(recentRecipes);
         
         // Create a new array to ensure state update triggers a re-render
@@ -166,13 +175,13 @@ export const useRecipes = () => {
           return newRecentRecipes;
         });
       }
-      console.log('✅ Recipe refresh completed successfully');
+      if (isManualRefresh) console.log('✅ Recipe refresh completed');
     } catch (err) {
       console.error('❌ Error refreshing recipes:', err);
     } finally {
       setIsRefreshing(false);
     }
-  }, [recipes, recentRecipes]);
+  }, [recipes, recentRecipes, isRefreshing]);
 
   const generateRecipes = useCallback(async (preferences: RecipePreferences, options?: { accumulate?: boolean }) => {
     setIsLoading(true);
@@ -226,6 +235,7 @@ export const useRecipes = () => {
     error,
     generateRecipes,
     saveToRecent,
-    refreshRecipes
+    refreshRecipes,
+    removeFromRecent
   };
 };

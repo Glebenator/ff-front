@@ -1,6 +1,6 @@
 // components/RecipeList.tsx
 import React from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
@@ -14,7 +14,8 @@ interface RecipeListProps {
   onRetry: () => void;
   onFavoriteToggle: (recipe: Recipe) => void;
   isFavorite: (recipeId: string) => boolean;
-  mode?: 'default' | 'recent';
+  mode?: 'default' | 'recent' | 'favorites';
+  onDeleteRecipe?: (recipeId: string) => void;
 }
 
 export default function RecipeList({
@@ -24,7 +25,8 @@ export default function RecipeList({
   onRetry,
   onFavoriteToggle,
   isFavorite,
-  mode = 'default'
+  mode = 'default',
+  onDeleteRecipe
 }: RecipeListProps) {
   const groupRecipes = () => {
     if (mode === 'recent') {
@@ -168,6 +170,23 @@ export default function RecipeList({
               onFavoriteToggle={onFavoriteToggle}
               isFavorite={isFavorite(recipe.id)}
               compact={mode === 'recent'}
+              allowDelete={mode === 'recent' || mode === 'favorites'}
+              onDelete={onDeleteRecipe ? 
+                () => {
+                  Alert.alert(
+                    'Remove Recipe',
+                    `Are you sure you want to remove "${recipe.title}" from your ${mode === 'recent' ? 'recent recipes' : 'favorites'}?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { 
+                        text: 'Remove', 
+                        onPress: () => onDeleteRecipe(recipe.id),
+                        style: 'destructive' 
+                      },
+                    ]
+                  );
+                } : undefined
+              }
             />
           ))}
         </View>

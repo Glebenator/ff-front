@@ -33,7 +33,8 @@ export default function RecipeScreen() {
     error, 
     generateRecipes, 
     saveToRecent,
-    refreshRecipes 
+    refreshRecipes,
+    removeFromRecent 
   } = useRecipes();
   
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
@@ -142,28 +143,47 @@ export default function RecipeScreen() {
 
         {activeTab === 'favorites' && (
           <View style={styles.recipeListSection}>
-            <RecipeList
-              recipes={getDisplayRecipes()}
-              isLoading={false}
-              error={null}
-              onRetry={() => {}}
-              onFavoriteToggle={toggleFavorite}
-              isFavorite={isFavorite}
-            />
+            {getDisplayRecipes().length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="heart" size={48} color={theme.colors.text.secondary} />
+                <Text style={styles.emptyText}>No favorite recipes yet</Text>
+                <Text style={styles.emptySubText}>Heart the recipes you love to save them here</Text>
+              </View>
+            ) : (
+              <RecipeList
+                mode="favorites"
+                recipes={getDisplayRecipes()}
+                isLoading={false}
+                error={null}
+                onRetry={() => {}}
+                onFavoriteToggle={toggleFavorite}
+                isFavorite={isFavorite}
+                onDeleteRecipe={(recipeId) => toggleFavorite(getDisplayRecipes().find(r => r.id === recipeId))}
+              />
+            )}
           </View>
         )}
 
         {activeTab === 'recent' && (
           <View style={styles.recipeListSection}>
-            <RecipeList
-              recipes={getDisplayRecipes()}
-              isLoading={false}
-              error={null}
-              onRetry={() => {}}
-              onFavoriteToggle={toggleFavorite}
-              isFavorite={isFavorite}
-              mode="recent"
-            />
+            {getDisplayRecipes().length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="time" size={48} color={theme.colors.text.secondary} />
+                <Text style={styles.emptyText}>No recent recipes</Text>
+                <Text style={styles.emptySubText}>Generate some recipes to see them here</Text>
+              </View>
+            ) : (
+              <RecipeList
+                mode="recent"
+                recipes={getDisplayRecipes()}
+                isLoading={false}
+                error={null}
+                onRetry={() => {}}
+                onFavoriteToggle={toggleFavorite}
+                isFavorite={isFavorite}
+                onDeleteRecipe={removeFromRecent}
+              />
+            )}
           </View>
         )}
       </ScrollView>
@@ -198,5 +218,25 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.fontSize.sm,
     fontWeight: '500',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+    minHeight: 300,
+  },
+  emptyText: {
+    marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.lg,
+    fontWeight: '600',
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+  },
+  emptySubText: {
+    marginTop: theme.spacing.sm,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text.tertiary,
+    textAlign: 'center',
   }
 });
