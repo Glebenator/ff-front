@@ -27,6 +27,29 @@ export default function RecipeCard({
     if (percentage >= 50) return theme.colors.primary;
     return theme.colors.status.warning;
   };
+  
+  // New ingredient badge component
+  const IngredientBadge = ({ count, type }: { count: number, type: 'matching' | 'missing' }) => {
+    const isMatching = type === 'matching';
+    return (
+      <View style={[
+        styles.badge,
+        { backgroundColor: isMatching ? 'rgba(99, 207, 139, 0.2)' : 'rgba(255, 170, 51, 0.2)' }
+      ]}>
+        <Ionicons 
+          name={isMatching ? "checkmark-circle" : "alert-circle"} 
+          size={16} 
+          color={isMatching ? theme.colors.status.success : theme.colors.status.warning} 
+        />
+        <Text style={[
+          styles.badgeText,
+          { color: isMatching ? theme.colors.status.success : theme.colors.status.warning }
+        ]}>
+          {count} {isMatching ? 'available' : 'needed'}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <>
@@ -38,66 +61,79 @@ export default function RecipeCard({
         ]}
         onPress={() => setShowDetail(true)}
       >
-        <Image 
-          source={{ uri: recipe.imageUrl }}
-          style={[styles.image, compact && styles.imageCompact]}
-          resizeMode="cover"
-        />
-        
-        <View style={[styles.content, compact && styles.contentCompact]}>
-          <View>
-            <Text style={[styles.title, compact && styles.titleCompact]} numberOfLines={1}>
-              {recipe.title}
-            </Text>
-            
-            <View style={styles.metrics}>
-              <MetricItem 
-                icon="time-outline" 
-                value={recipe.cookingTime}
-                compact={compact} 
-              />
-              <MetricItem 
-                icon="restaurant-outline" 
-                value={recipe.difficulty}
-                compact={compact}
-              />
-              {isFavorite && (
-                <Ionicons 
-                  name="heart" 
-                  size={compact ? 14 : 16} 
-                  color={theme.colors.status.error} 
-                />
-              )}
-            </View>
-          </View>
-
+        {/* Card Header with Image and Match Percentage */}
+        <View style={styles.cardHeader}>
+          <Image 
+            source={{ uri: recipe.imageUrl }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+          
           {!compact && (
-            <View style={styles.matchInfo}>
-              <View style={styles.matchPercentage}>
-                <Text style={[
-                  styles.matchPercentageText,
-                  { color: getMatchColor(recipe.matchPercentage) }
-                ]}>
-                  {Math.round(recipe.matchPercentage)}% match
-                </Text>
-              </View>
-              
-              <Text style={styles.ingredientAvailable}>
-                {recipe.matchingIngredients.length} ingredients available
-              </Text>
-              <Text style={styles.ingredientNeeded}>
-                {recipe.missingIngredients.length} ingredients needed
+            <View style={styles.matchBadge}>
+              <Text style={[styles.matchText, { color: getMatchColor(recipe.matchPercentage) }]}>
+                {Math.round(recipe.matchPercentage)}%
               </Text>
             </View>
           )}
+          
+          {/* Favorite Button */}
+          <Pressable 
+            style={styles.favoriteButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              onFavoriteToggle(recipe);
+            }}
+          >
+            <Ionicons 
+              name={isFavorite ? "heart" : "heart-outline"} 
+              size={24} 
+              color={isFavorite ? theme.colors.status.error : theme.colors.text.secondary} 
+            />
+          </Pressable>
         </View>
+        
+        {/* Card Content */}
+        <View style={styles.content}>
+          <Text style={styles.title} numberOfLines={compact ? 1 : 2}>
+            {recipe.title}
+          </Text>
 
-        <Ionicons 
-          name="chevron-forward" 
-          size={compact ? 16 : 20} 
-          color={theme.colors.text.secondary} 
-          style={styles.arrow}
-        />
+          {/* Recipe Metrics */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricItem}>
+              <Ionicons name="time-outline" size={16} color={theme.colors.primary} />
+              <Text style={styles.metricText}>{recipe.cookingTime}</Text>
+            </View>
+            
+            <View style={styles.metricSeparator} />
+            
+            <View style={styles.metricItem}>
+              <Ionicons name="restaurant-outline" size={16} color={theme.colors.primary} />
+              <Text style={styles.metricText}>{recipe.difficulty}</Text>
+            </View>
+            
+            <View style={styles.metricSeparator} />
+            
+            <View style={styles.metricItem}>
+              <Ionicons name="flame-outline" size={16} color={theme.colors.primary} />
+              <Text style={styles.metricText}>{recipe.calories}</Text>
+            </View>
+          </View>
+          
+          {!compact && (
+            <View style={styles.ingredients}>
+              <IngredientBadge count={recipe.matchingIngredients.length} type="matching" />
+              <IngredientBadge count={recipe.missingIngredients.length} type="missing" />
+            </View>
+          )}
+        </View>
+        
+        {/* View Details Button */}
+        <View style={styles.viewDetailsButton}>
+          <Text style={styles.viewDetailsText}>View Details</Text>
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+        </View>
       </Pressable>
 
       <RecipeDetailModal
@@ -111,107 +147,113 @@ export default function RecipeCard({
   );
 }
 
-const MetricItem = ({ 
-  icon, 
-  value,
-  compact = false 
-}: { 
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  value: string;
-  compact?: boolean;
-}) => (
-  <View style={styles.metricItem}>
-    <Ionicons 
-      name={icon} 
-      size={compact ? 12 : 14} 
-      color={theme.colors.text.secondary} 
-    />
-    <Text style={[styles.metricText, compact && styles.metricTextCompact]}>{value}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
     backgroundColor: theme.colors.background.tertiary,
     borderRadius: theme.borderRadius.lg,
     overflow: 'hidden',
     marginBottom: theme.spacing.md,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  cardCompact: {
+    height: 200,
+    marginBottom: theme.spacing.sm,
   },
   cardPressed: {
-    opacity: 0.7,
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
+  },
+  cardHeader: {
+    position: 'relative',
   },
   image: {
-    width: 100,
-    height: 100,
+    width: '100%',
+    height: 160,
+    borderTopLeftRadius: theme.borderRadius.lg,
+    borderTopRightRadius: theme.borderRadius.lg,
+  },
+  matchBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: 'rgba(30, 30, 30, 0.8)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: theme.borderRadius.sm,
+  },
+  matchText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: 'bold',
+  },
+  favoriteButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(30, 30, 30, 0.8)',
+    borderRadius: 20,
+    padding: 6,
   },
   content: {
-    flex: 1,
     padding: theme.spacing.md,
-    justifyContent: 'space-between',
   },
   title: {
     fontSize: theme.fontSize.lg,
     fontWeight: 'bold',
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
   },
-  metrics: {
+  metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   metricItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  metricSeparator: {
+    width: 1,
+    height: 16,
+    backgroundColor: theme.colors.border.primary,
+    marginHorizontal: theme.spacing.sm,
   },
   metricText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
   },
-  matchInfo: {
-    gap: theme.spacing.xs,
+  ingredients: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginVertical: theme.spacing.sm,
   },
-  matchPercentage: {
-    marginBottom: theme.spacing.xs,
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: theme.borderRadius.md,
+    gap: 4,
   },
-  matchPercentageText: {
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
-  },
-  ingredientAvailable: {
+  badgeText: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.status.success,
+    fontWeight: '500',
   },
-  ingredientNeeded: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.status.warning,
-  },
-  arrow: {
-    alignSelf: 'center',
-    marginRight: theme.spacing.sm,
-  },
-  cardCompact: {
-    height: 70,
-    marginBottom: theme.spacing.sm,
-  },
-  imageCompact: {
-    width: 70,
-    height: 70,
-  },
-  contentCompact: {
+  viewDetailsButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: theme.spacing.sm,
+    backgroundColor: 'rgba(83, 209, 129, 0.1)',
+    gap: 6,
   },
-  titleCompact: {
-    fontSize: theme.fontSize.md,
+  viewDetailsText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: '500',
+    color: theme.colors.primary,
   },
-  metricTextCompact: {
-    fontSize: theme.fontSize.xs,
-  },
-  matchTextCompact: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
-  }
 });

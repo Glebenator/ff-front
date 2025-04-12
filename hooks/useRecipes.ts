@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GeminiService, type Recipe } from '@/services/api/recipeGenerationService';
+import { RecipeMatcherService } from '@/services/recipeMatcherService';
 
 const RECENT_RECIPES_STORAGE_KEY = 'fridgefriend_recent_recipes';
 
@@ -19,6 +20,7 @@ export const useRecipes = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [recentRecipes, setRecentRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Load saved recent recipes on startup
@@ -37,6 +39,30 @@ export const useRecipes = () => {
     loadRecentRecipes();
   }, []);
 
+  // Update match percentages whenever recipes are displayed
+  useEffect(() => {
+    const updateMatchPercentages = async () => {
+      if (recipes.length > 0) {
+        const updatedRecipes = await RecipeMatcherService.matchRecipes(recipes);
+        setRecipes(updatedRecipes);
+      }
+    };
+
+    updateMatchPercentages();
+  }, [recipes.length]);
+
+  // Do the same for recent recipes
+  useEffect(() => {
+    const updateRecentMatchPercentages = async () => {
+      if (recentRecipes.length > 0) {
+        const updatedRecentRecipes = await RecipeMatcherService.matchRecipes(recentRecipes);
+        setRecentRecipes(updatedRecentRecipes);
+      }
+    };
+
+    updateRecentMatchPercentages();
+  }, [recentRecipes.length]);
+
   // Save recent recipes whenever they change
   useEffect(() => {
     const saveRecentRecipes = async () => {
@@ -51,6 +77,26 @@ export const useRecipes = () => {
       saveRecentRecipes();
     }
   }, [recentRecipes]);
+
+  // Create a function to refresh recipe match percentages
+  const refreshRecipes = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      if (recipes.length > 0) {
+        const updatedRecipes = await RecipeMatcherService.matchRecipes(recipes);
+        setRecipes(updatedRecipes);
+      }
+      
+      if (recentRecipes.length > 0) {
+        const updatedRecentRecipes = await RecipeMatcherService.matchRecipes(recentRecipes);
+        setRecentRecipes(updatedRecentRecipes);
+      }
+    } catch (err) {
+      console.error('Error refreshing recipes:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [recipes, recentRecipes]);
 
   const generateRecipes = useCallback(async (preferences: RecipePreferences, options?: { accumulate?: boolean }) => {
     setIsLoading(true);
@@ -94,8 +140,10 @@ export const useRecipes = () => {
     recipes,
     recentRecipes,
     isLoading,
+    isRefreshing,
     error,
     generateRecipes,
-    saveToRecent
+    saveToRecent,
+    refreshRecipes
   };
 };

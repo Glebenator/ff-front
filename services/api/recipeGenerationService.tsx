@@ -1,8 +1,9 @@
-// services/ai/mockGeminiService.ts
+// services/api/recipeGenerationService.tsx
 import { type MatchedRecipe, RecipeMatcherService } from '@/services/recipeMatcherService';
 import { GoogleGenAI } from '@google/genai';
 import { ingredientDb } from '@/services/database/ingredientDb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 
 export interface Recipe extends MatchedRecipe {}
 
@@ -16,7 +17,7 @@ export interface RecipePreferences {
 }
 
 // Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'lol leaked the key last time' });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 const SYSTEM_PROMPT = `You are a cooking expert that generates recipes based on available ingredients. 
 Generate recipes that maximize the use of available ingredients, especially those that are expiring soon.
@@ -46,6 +47,15 @@ Always return recipes in the following JSON format:
 
 const RECENT_RECIPES_KEY = '@recent_recipes';
 const MAX_RECENT_RECIPES = 20;
+const IMAGE_DIRECTORY = `${FileSystem.documentDirectory}recipe_images/`;
+
+// Ensure the image directory exists
+async function ensureImageDirectoryExists() {
+  const dirInfo = await FileSystem.getInfoAsync(IMAGE_DIRECTORY);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(IMAGE_DIRECTORY, { intermediates: true });
+  }
+}
 
 class RecentRecipesManager {
   private static recentRecipes: Recipe[] = [];
@@ -74,6 +84,88 @@ class RecentRecipesManager {
 
   static getRecentRecipes(): Recipe[] {
     return this.recentRecipes;
+  }
+}
+
+// New function to generate images with Gemini
+async function generateRecipeImage(recipe: Recipe): Promise<string> {
+  try {
+    
+    await ensureImageDirectoryExists();
+    
+    // Create a sanitized filename from the recipe title
+    const sanitizedTitle = recipe.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const filename = `${sanitizedTitle}_${Date.now()}.png`;
+    const filePath = `${IMAGE_DIRECTORY}${filename}`;
+    
+    // Check if we already have an image for this recipe (general check for recipe title)
+    const existingFiles = await FileSystem.readDirectoryAsync(IMAGE_DIRECTORY);
+    const existingFile = existingFiles.find(file => file.startsWith(sanitizedTitle));
+    
+    if (existingFile) {
+      console.log(`Using existing image for ${recipe.title}`);
+      return `file://${IMAGE_DIRECTORY}${existingFile}`;
+    }
+    
+    // Generate the prompt for the image
+    let ingredientsList = [];
+    if (recipe.matchingIngredients && recipe.matchingIngredients.length > 0) {
+      // Handle both string arrays and object arrays
+      ingredientsList = recipe.matchingIngredients.slice(0, 3).map(i => 
+        typeof i === 'string' ? i : (i.name || '')
+      );
+    }
+    
+    const prompt = 
+      `Create a professional food photo of ${recipe.title}. ` + 
+      (ingredientsList.length > 0 
+        ? `The dish should include ${ingredientsList.join(', ')}. ` 
+        : '') +
+      `Make it look appetizing, well-plated, with good lighting, as seen in a high-end cookbook. No text overlay. Photorealistic style.`;
+    
+    console.log('Generating image with prompt:', prompt);
+    
+    // Call Gemini to generate the image
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash-exp-image-generation",
+      contents: prompt,
+      config: {
+        responseModalities: ["Text", "Image"],
+      },
+    });
+    
+    // Check if we got a valid response with candidates
+    if (!response.candidates || !response.candidates[0] || !response.candidates[0].content) {
+      console.warn('Invalid or empty response from Gemini');
+      return recipe.imageUrl; // Return original image URL
+    }
+    
+    // Extract and save the image
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData && part.inlineData.data) {
+        const imageData = part.inlineData.data;
+        
+        try {
+          // Save the base64 image to a file
+          await FileSystem.writeAsStringAsync(filePath, imageData, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          console.log(`Image saved at: ${filePath}`);
+          return `file://${filePath}`;
+        } catch (fileError) {
+          console.error('Error saving image file:', fileError);
+          return recipe.imageUrl; // Return original on file save error
+        }
+      }
+    }
+    
+    // If we got here, no image part was found in the response
+    console.log('No image data in Gemini response, using original image');
+    return recipe.imageUrl;
+  } catch (error) {
+    console.error('Error generating recipe image:', error);
+    return recipe.imageUrl; // Return original image URL on any error
   }
 }
 
@@ -152,22 +244,33 @@ export class GeminiService {
         return MockGeminiService.generateRecipes();
       }
       
-      // Add unique IDs, image URLs, and preferences to the recipes
+      // Add unique IDs and preferences to the recipes
       const processedRecipes = recipes.map((recipe: any, index: number) => ({
         ...recipe,
         id: `gemini-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`,
-        imageUrl: '/api/placeholder/400/200',
+        imageUrl: '/api/placeholder/400/200', // Temporary placeholder
         generationPreferences: { ...preferences }
       }));
 
+      // Match recipes against user's ingredients
+      const matchedRecipes = await RecipeMatcherService.matchRecipes(processedRecipes);
+      
+      // Generate images for each recipe (in parallel)
+      const recipesWithImages = await Promise.all(
+        matchedRecipes.map(async (recipe) => {
+          const imageUrl = await generateRecipeImage(recipe);
+          return { ...recipe, imageUrl };
+        })
+      );
+
       // Save unique recent recipes
       const existingRecipes = await RecentRecipesManager.loadRecentRecipes();
-      const uniqueNewRecipes = processedRecipes.filter(newRecipe => 
+      const uniqueNewRecipes = recipesWithImages.filter(newRecipe => 
         !existingRecipes.some(existing => existing.title === newRecipe.title)
       );
       await RecentRecipesManager.addRecipes(uniqueNewRecipes);
 
-      return await RecipeMatcherService.matchRecipes(processedRecipes);
+      return recipesWithImages;
       
     } catch (error) {
       console.error('Gemini API error:', error);
@@ -203,6 +306,7 @@ const MOCK_RECIPES = [
     },
     imageUrl: '/api/placeholder/400/200'
   },
+  // Other mock recipes remain the same
   {
     id: '2',
     title: 'Protein-Packed Quinoa Bowl',
@@ -297,8 +401,27 @@ export class MockGeminiService {
       filteredRecipes = [MOCK_RECIPES[0]];
     }
     
-    // Match recipes against user's ingredients
+    // Match recipes against user's ingredients first
     const matchedRecipes = await RecipeMatcherService.matchRecipes(filteredRecipes);
-    return matchedRecipes;
+    
+    // Then try to generate images if possible (but don't break if it fails)
+    try {
+      const recipesWithImages = await Promise.all(
+        matchedRecipes.map(async (recipe) => {
+          try {
+            const imageUrl = await generateRecipeImage(recipe);
+            return { ...recipe, imageUrl };
+          } catch (error) {
+            console.warn(`Could not generate image for ${recipe.title}:`, error);
+            return recipe; // Keep original imageUrl on error
+          }
+        })
+      );
+      
+      return recipesWithImages;
+    } catch (error) {
+      console.warn('Failed to generate any images:', error);
+      return matchedRecipes; // Return the recipes without custom images
+    }
   }
 }
