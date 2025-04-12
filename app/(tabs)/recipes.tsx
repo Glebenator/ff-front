@@ -96,6 +96,12 @@ export default function RecipeScreen() {
         activeTab={activeTab} 
         onChangeTab={setActiveTab} 
       />
+      
+      {isRefreshing && (
+        <View style={styles.refreshIndicator}>
+          <Text style={styles.refreshText}>Updating recipes with latest ingredients...</Text>
+        </View>
+      )}
 
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
@@ -180,4 +186,17 @@ const styles = StyleSheet.create({
   recipeListHeader: {
     marginBottom: theme.spacing.md,
   },
+  refreshIndicator: {
+    backgroundColor: 'rgba(83, 209, 129, 0.15)',
+    padding: theme.spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.primary,
+  },
+  refreshText: {
+    color: theme.colors.primary,
+    fontSize: theme.fontSize.sm,
+    fontWeight: '500',
+  }
 });

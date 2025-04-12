@@ -89,13 +89,18 @@ export const useRecipes = () => {
         const ingredients = await ingredientDb.getAll();
         if (ingredients.length === 0) return;
         
-        // Find the most recent update time
+        // Find the most recent update time using dateAdded field since there's no updatedAt
         const latestUpdate = Math.max(
-          ...ingredients.map(ing => new Date(ing.updatedAt || 0).getTime())
+          ...ingredients.map(ing => new Date(ing.dateAdded || 0).getTime())
         );
+        
+        console.log('Latest ingredient update:', new Date(latestUpdate).toISOString());
+        console.log('Last recorded update:', lastIngredientUpdateTime ? 
+                   new Date(lastIngredientUpdateTime).toISOString() : 'none');
         
         // If we have a new update time, refresh recipes
         if (latestUpdate > lastIngredientUpdateTime) {
+          console.log('Ingredient changes detected, refreshing recipes...');
           setLastIngredientUpdateTime(latestUpdate);
           refreshRecipes();
         }
@@ -104,37 +109,66 @@ export const useRecipes = () => {
       }
     };
 
-    // Set up polling interval to check for ingredient changes (every 30 seconds)
-    const intervalId = setInterval(checkForIngredientChanges, 30000);
+    // Set up polling interval to check for ingredient changes (every 5 seconds for faster detection)
+    const intervalId = setInterval(checkForIngredientChanges, 5000);
     
     // Initial check
     checkForIngredientChanges();
     
     return () => clearInterval(intervalId);
-  }, [lastIngredientUpdateTime]);
+  }, [lastIngredientUpdateTime, refreshRecipes]);
 
   // Refresh recipe matches every time the screen is focused
   useFocusEffect(
     useCallback(() => {
+      console.log('🔎 Recipe screen focused, refreshing matches...');
       refreshRecipes();
-    }, [])
+    }, [refreshRecipes])
   );
 
   // Create a function to refresh recipe match percentages
   const refreshRecipes = useCallback(async () => {
+    console.log('🔄 Starting recipe refresh...');
     setIsRefreshing(true);
     try {
       if (recipes.length > 0) {
+        console.log(`Refreshing ${recipes.length} primary recipes`);
         const updatedRecipes = await RecipeMatcherService.refreshRecipeMatches(recipes);
-        setRecipes(updatedRecipes);
+        
+        // Create a new array to ensure state update triggers a re-render
+        setRecipes(prevRecipes => {
+          // For each updated recipe, find and replace the corresponding recipe in the previous state
+          const newRecipes = [...prevRecipes];
+          updatedRecipes.forEach(updatedRecipe => {
+            const index = newRecipes.findIndex(r => r.id === updatedRecipe.id);
+            if (index !== -1) {
+              newRecipes[index] = updatedRecipe;
+            }
+          });
+          return newRecipes;
+        });
       }
       
       if (recentRecipes.length > 0) {
+        console.log(`Refreshing ${recentRecipes.length} recent recipes`);
         const updatedRecentRecipes = await RecipeMatcherService.refreshRecipeMatches(recentRecipes);
-        setRecentRecipes(updatedRecentRecipes);
+        
+        // Create a new array to ensure state update triggers a re-render
+        setRecentRecipes(prevRecentRecipes => {
+          // For each updated recipe, find and replace the corresponding recipe in the previous state
+          const newRecentRecipes = [...prevRecentRecipes];
+          updatedRecentRecipes.forEach(updatedRecipe => {
+            const index = newRecentRecipes.findIndex(r => r.id === updatedRecipe.id);
+            if (index !== -1) {
+              newRecentRecipes[index] = updatedRecipe;
+            }
+          });
+          return newRecentRecipes;
+        });
       }
+      console.log('✅ Recipe refresh completed successfully');
     } catch (err) {
-      console.error('Error refreshing recipes:', err);
+      console.error('❌ Error refreshing recipes:', err);
     } finally {
       setIsRefreshing(false);
     }
