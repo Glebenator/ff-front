@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import SearchBar from '@/components/SearchBar';
-import ExpiryFilters from './ExpiryFilters';
+import AnimatedExpiryFilters from './AnimatedExpiryFilters';
 import CategoryFilters from './CategoryFilters';
 import { type FilterType, type SortType } from '@/types/types';
 
@@ -100,7 +100,7 @@ export default function FiltersSection({
       <Animated.View style={{ height: heightInterpolate, overflow: 'hidden' }}>
         <>
           {/* Expiry Date Filters */}
-          <ExpiryFilters filter={filter} setFilter={setFilter} />
+          <AnimatedExpiryFilters filter={filter} setFilter={setFilter} />
 
           <View style={styles.filterSeparator} />
 

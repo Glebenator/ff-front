@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { View, ScrollView, Text, StyleSheet, RefreshControl } from 'react-native';
+import { View, ScrollView, Text, StyleSheet, RefreshControl, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
@@ -7,10 +7,10 @@ import { useRecipes } from '@/hooks/useRecipes';
 import { useFavorites } from '@/hooks/useFavorites';
 import RecipeList from '@/components/recipes/RecipeList';
 import { type RecipePreferences } from '@/hooks/useRecipes';
-import TabNavigation from '@/components/recipes/TabNavigation';
 import PreferencesSection from '@/components/recipes/PreferencesSection';
 import { RecipeSortModal, SortButton } from '@/components/recipes/sort';
 import { type RecipeSortType } from '@/types/types';
+import AnimatedTabNavigation from '@/components/recipes/AnimatedTabNavigation';
 
 export default function RecipeScreen() {
   // Tab state
@@ -84,6 +84,8 @@ export default function RecipeScreen() {
     refreshRecipes();
   }, [refreshRecipes]);
 
+
+
   // Get recipes based on active tab
   const getDisplayRecipes = () => {
     let displayRecipes = [];
@@ -143,27 +145,10 @@ export default function RecipeScreen() {
     
     return sortedRecipes;
   }, [sortOrder]);
-  
-  // Original getDisplayRecipes function - replaced with the above
-  const _getDisplayRecipes = () => {
-    switch (activeTab) {
-      case 'favorites':
-        return favorites || [];
-      case 'suggested':
-        return recipes || [];
-      case 'recent':
-        return recentRecipes || [];
-      default:
-        return [];
-    }
-  };
 
   return (
     <View style={styles.container}>
-      <TabNavigation 
-        activeTab={activeTab} 
-        onChangeTab={setActiveTab} 
-      />
+      <AnimatedTabNavigation activeTab={activeTab} onChangeTab={setActiveTab} />
       
       {getDisplayRecipes().length > 0 && (
         <View style={styles.sortContainer}>
@@ -330,7 +315,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.sm,
+    paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.xs,
   },
   sortLabel: {
@@ -341,5 +326,6 @@ const styles = StyleSheet.create({
   sortButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-  }
+  },
+
 });

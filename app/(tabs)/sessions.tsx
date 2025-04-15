@@ -6,11 +6,11 @@ import { sessionManager, type EditableFridgeItem } from '@/services/sessionManag
 import { toastStore } from '@/services/toastStore';
 import SessionItemEditor from '@/components/sessions/SessionItemEditor';
 import { 
-  FilterHeader, 
   SessionCard, 
   EmptyState, 
   type SessionStatus 
 } from '@/components/sessions';
+import AnimatedFilterHeader from '@/components/sessions/AnimatedFilterHeader';
 
 export default function SessionsScreen() {
   const {
@@ -105,7 +105,7 @@ export default function SessionsScreen() {
 
   return (
     <View style={styles.container}>
-      <FilterHeader 
+      <AnimatedFilterHeader 
         activeFilter={activeFilter}
         setActiveFilter={setActiveFilter}
         onClear={() => handleClearSessions(activeFilter)}

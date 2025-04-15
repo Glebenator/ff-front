@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { theme } from '@/styles/theme';
+import { sharedStyles } from '@/styles/sharedStyles';
 
 type TabType = 'suggested' | 'favorites' | 'recent';
 
@@ -12,78 +13,45 @@ interface TabNavigationProps {
 export default function TabNavigation({ activeTab, onChangeTab }: TabNavigationProps) {
   return (
     <View style={styles.tabContainer}>
-      <TabButton 
-        title="Suggested" 
-        active={activeTab === 'suggested'} 
-        onPress={() => onChangeTab('suggested')} 
-      />
-      <TabButton 
-        title="Favorites" 
-        active={activeTab === 'favorites'} 
-        onPress={() => onChangeTab('favorites')} 
-      />
-      <TabButton 
-        title="Recent" 
-        active={activeTab === 'recent'} 
-        onPress={() => onChangeTab('recent')} 
-      />
+      <Pressable
+        style={[sharedStyles.filterButton, activeTab === 'suggested' && sharedStyles.filterButtonActive]}
+        onPress={() => onChangeTab('suggested')}
+      >
+        <Text style={[sharedStyles.filterButtonText, activeTab === 'suggested' && sharedStyles.filterButtonTextActive]}>
+          Suggested
+        </Text>
+      </Pressable>
+      <Pressable
+        style={[sharedStyles.filterButton, activeTab === 'favorites' && sharedStyles.filterButtonActive]}
+        onPress={() => onChangeTab('favorites')}
+      >
+        <Text style={[sharedStyles.filterButtonText, activeTab === 'favorites' && sharedStyles.filterButtonTextActive]}>
+          Favorites
+        </Text>
+      </Pressable>
+      <Pressable
+        style={[sharedStyles.filterButton, activeTab === 'recent' && sharedStyles.filterButtonActive]}
+        onPress={() => onChangeTab('recent')}
+      >
+        <Text style={[sharedStyles.filterButtonText, activeTab === 'recent' && sharedStyles.filterButtonTextActive]}>
+          Recent
+        </Text>
+      </Pressable>
     </View>
   );
 }
 
-interface TabButtonProps {
-  title: string;
-  active: boolean;
-  onPress: () => void;
-}
 
-function TabButton({ title, active, onPress }: TabButtonProps) {
-  return (
-    <Pressable 
-      style={({ pressed }) => [
-        styles.tabButton,
-        active && styles.activeTab,
-        pressed && styles.pressedTab
-      ]}
-      onPress={onPress}
-    >
-      <Text style={[
-        styles.tabText,
-        active && styles.activeTabText
-      ]}>
-        {title}
-      </Text>
-    </Pressable>
-  );
-}
 
 const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.background.secondary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.lg,
-    margin: theme.spacing.md,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
-    borderRadius: theme.borderRadius.md,
-  },
-  activeTab: {
-    backgroundColor: theme.colors.primary,
-  },
-  pressedTab: {
-    opacity: 0.8,
-  },
-  tabText: {
-    fontSize: theme.fontSize.md,
-    fontWeight: '500',
-    color: theme.colors.text.secondary,
-  },
-  activeTabText: {
-    color: theme.colors.background.primary,
-    fontWeight: '600',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.background.primary,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.primary,
   },
 });
