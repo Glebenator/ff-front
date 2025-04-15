@@ -14,6 +14,7 @@ export interface RecipePreferences {
   vegetarian?: boolean;
   healthy?: boolean;
   proteinPlus?: boolean;
+  mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
 }
 
 // Initialize Gemini
@@ -185,11 +186,12 @@ export class GeminiService {
         preferences.proteinPlus ? 'high protein' : null,
       ].filter(Boolean).join(', ');
 
+      const mealTypeText = preferences.mealType ? `\nMeal type: ${preferences.mealType}` : '';
       const prompt = `${SYSTEM_PROMPT}\n
         Generate exactly 3 recipes using these ingredients:
         Available: ${availableIngredients.join(', ')}
         ${expiringIngredientNames.length > 0 ? `\nExpiring soon: ${expiringIngredientNames.join(', ')}` : ''}
-        
+        ${mealTypeText}
         Important Requirements:
         1. ${preferences.useExpiring ? 'Prioritize using ingredients that are expiring soon' : 'No specific ingredient priority'}
         2. ${preferences.quickMeals ? 'Recipes must take under 30 minutes to prepare' : 'No time restriction'}

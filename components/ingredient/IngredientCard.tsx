@@ -32,6 +32,8 @@ export default function IngredientCard({
     onUpdate 
 }: IngredientCardProps) {
     const [showModal, setShowModal] = useState(false);
+    const MAX_NOTE_LENGTH = 50; // Maximum length for displaying notes directly
+    const isShortNote = notes && notes.length <= MAX_NOTE_LENGTH;
 
     const getExpiryColor = () => {
         if (daysUntilExpiry <= 0) return theme.colors.status.danger;
@@ -125,7 +127,7 @@ export default function IngredientCard({
                             {name}
                         </Text>
                         <View style={sharedStyles.iconRow}>
-                            {notes && (
+                            {notes && !isShortNote && (
                                 <Ionicons 
                                     name="document-text-outline" 
                                     size={16} 
@@ -164,6 +166,19 @@ export default function IngredientCard({
                             <Text style={styles.quantity}>{quantity}</Text>
                         </View>
                     </View>
+
+                    {isShortNote && (
+                        <View style={sharedStyles.detailsRow}>
+                            <Ionicons 
+                                name="document-text-outline" 
+                                size={14} 
+                                color={theme.colors.text.tertiary}
+                            />
+                            <Text style={styles.noteText} numberOfLines={1}>
+                                {notes}
+                            </Text>
+                        </View>
+                    )}
 
                     <View style={sharedStyles.detailsRow}>
                         <Ionicons 
@@ -310,5 +325,10 @@ const styles = StyleSheet.create({
     cancelButtonText: {
         color: theme.colors.text.secondary,
         fontSize: theme.fontSize.md,
+    },
+    noteText: {
+        color: theme.colors.text.tertiary,
+        fontSize: theme.fontSize.sm,
+        flex: 1,
     },
 });
