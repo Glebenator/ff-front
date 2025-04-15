@@ -38,11 +38,11 @@ const SortButton: React.FC<SortButtonProps> = ({ sortOrder, onPress }) => {
       ]}
       onPress={onPress}
     >
-      <Ionicons name="funnel-outline" size={16} color={theme.colors.text.primary} />
-      <Text style={styles.buttonText}>
+      <Ionicons name="funnel-outline" size={14} color={theme.colors.primary} />
+      <Text style={styles.buttonText} numberOfLines={1} ellipsizeMode="tail">
         {getSortLabel(sortOrder)}
       </Text>
-      <Ionicons name="chevron-down" size={16} color={theme.colors.text.primary} />
+      <Ionicons name="chevron-down" size={12} color={theme.colors.primary} />
     </Pressable>
   );
 };
@@ -51,20 +51,22 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.tertiary,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    marginVertical: theme.spacing.sm,
-    gap: theme.spacing.xs,
+    backgroundColor: 'rgba(83, 209, 129, 0.1)',
+    borderRadius: 16,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(83, 209, 129, 0.2)',
   },
   buttonPressed: {
     opacity: 0.8,
   },
   buttonText: {
-    fontSize: theme.fontSize.sm,
+    fontSize: theme.fontSize.xs,
     fontWeight: '500',
-    color: theme.colors.text.primary,
+    color: theme.colors.primary,
+    maxWidth: 100,
   },
 });
 

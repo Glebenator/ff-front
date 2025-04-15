@@ -150,17 +150,7 @@ export default function RecipeScreen() {
     <View style={styles.container}>
       <AnimatedTabNavigation activeTab={activeTab} onChangeTab={setActiveTab} />
       
-      {getDisplayRecipes().length > 0 && (
-        <View style={styles.sortContainer}>
-          <Text style={styles.sortLabel}>Sort</Text>
-          <View style={styles.sortButtonContainer}>
-            <SortButton
-              sortOrder={sortOrder}
-              onPress={() => setIsSortModalVisible(true)}
-            />
-          </View>
-        </View>
-      )}
+      {/* We'll remove the standalone sort button since it's now integrated with the header */}
       
       {isRefreshing && (
         <View style={styles.refreshIndicator}>
@@ -190,9 +180,15 @@ export default function RecipeScreen() {
             />
 
             <View style={styles.recipeListSection}>
-              <Text style={[sharedStyles.subtitle as any, styles.recipeListHeader]}>
+              <View style={styles.recipeListHeader}>
+              <Text style={sharedStyles.subtitle as any}>
                 {getDisplayRecipes().length > 0 ? 'Available Recipes' : 'No Recipes Generated Yet'}
               </Text>
+              <SortButton
+                sortOrder={sortOrder}
+                onPress={() => setIsSortModalVisible(true)}
+              />
+            </View>
               <RecipeList
                 recipes={getDisplayRecipes()}
                 isLoading={isLoading}
@@ -214,16 +210,25 @@ export default function RecipeScreen() {
                 <Text style={styles.emptySubText}>Heart the recipes you love to save them here</Text>
               </View>
             ) : (
-              <RecipeList
-                mode="favorites"
-                recipes={getDisplayRecipes()}
-                isLoading={false}
-                error={null}
-                onRetry={() => {}}
-                onFavoriteToggle={toggleFavorite}
-                isFavorite={isFavorite}
-                onDeleteRecipe={(recipeId) => toggleFavorite(getDisplayRecipes().find(r => r.id === recipeId))}
-              />
+              <>
+                <View style={styles.recipeListHeader}>
+                  <Text style={sharedStyles.subtitle as any}>Favorites</Text>
+                  <SortButton
+                    sortOrder={sortOrder}
+                    onPress={() => setIsSortModalVisible(true)}
+                  />
+                </View>
+                <RecipeList
+                  mode="favorites"
+                  recipes={getDisplayRecipes()}
+                  isLoading={false}
+                  error={null}
+                  onRetry={() => {}}
+                  onFavoriteToggle={toggleFavorite}
+                  isFavorite={isFavorite}
+                  onDeleteRecipe={(recipeId) => toggleFavorite(getDisplayRecipes().find(r => r.id === recipeId))}
+                />
+              </>
             )}
           </View>
         )}
@@ -237,16 +242,25 @@ export default function RecipeScreen() {
                 <Text style={styles.emptySubText}>Generate some recipes to see them here</Text>
               </View>
             ) : (
-              <RecipeList
-                mode="recent"
-                recipes={getDisplayRecipes()}
-                isLoading={false}
-                error={null}
-                onRetry={() => {}}
-                onFavoriteToggle={toggleFavorite}
-                isFavorite={isFavorite}
-                onDeleteRecipe={removeFromRecent}
-              />
+              <>
+                <View style={styles.recipeListHeader}>
+                  <Text style={sharedStyles.subtitle as any}>Recent Recipes</Text>
+                  <SortButton
+                    sortOrder={sortOrder}
+                    onPress={() => setIsSortModalVisible(true)}
+                  />
+                </View>
+                <RecipeList
+                  mode="recent"
+                  recipes={getDisplayRecipes()}
+                  isLoading={false}
+                  error={null}
+                  onRetry={() => {}}
+                  onFavoriteToggle={toggleFavorite}
+                  isFavorite={isFavorite}
+                  onDeleteRecipe={removeFromRecent}
+                />
+              </>
             )}
           </View>
         )}
@@ -275,6 +289,9 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
   },
   recipeListHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: theme.spacing.md,
   },
   refreshIndicator: {
@@ -312,20 +329,14 @@ const styles = StyleSheet.create({
   },
   sortContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
     paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xs,
-  },
-  sortLabel: {
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
+    marginTop: theme.spacing.xs,
+    marginBottom: -theme.spacing.xs,
+    zIndex: 1,
   },
   sortButtonContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
   },
 
 });

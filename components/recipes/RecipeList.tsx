@@ -6,6 +6,7 @@ import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import { type Recipe } from '@/services/api/recipeGenerationService';
 import RecipeCard from './RecipeCard';
+import CompactRecipeCard from './CompactRecipeCard';
 
 interface RecipeListProps {
   recipes: Recipe[];
@@ -161,39 +162,66 @@ export default function RecipeList({
   return (
     <View>
       {Object.entries(groupedRecipes).map(([groupKey, groupRecipes]) => (
-        <View key={groupKey} style={styles.recipeGroup}>
+        <View key={groupKey} style={[styles.recipeGroup, mode === 'recent' && styles.recentRecipeGroup]}>
           <Text style={[
             styles.groupHeader,
             mode === 'recent' && styles.dateHeader
           ]}>
             {mode === 'recent' ? groupKey : renderPreferences(groupKey)}
           </Text>
-          {(groupRecipes as Recipe[]).map((recipe: Recipe) => (
-            <RecipeCard
-              key={recipe.id}
-              recipe={recipe}
-              onFavoriteToggle={onFavoriteToggle}
-              isFavorite={isFavorite(recipe.id)}
-              compact={mode === 'recent'}
-              allowDelete={mode === 'recent' || mode === 'favorites'}
-              onDelete={onDeleteRecipe ? 
-                () => {
-                  Alert.alert(
-                    'Remove Recipe',
-                    `Are you sure you want to remove "${recipe.title}" from your ${mode === 'recent' ? 'recent recipes' : 'favorites'}?`,
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { 
-                        text: 'Remove', 
-                        onPress: () => onDeleteRecipe(recipe.id),
-                        style: 'destructive' 
-                      },
-                    ]
-                  );
-                } : undefined
-              }
-            />
-          ))}
+          {(groupRecipes as Recipe[]).map((recipe: Recipe) => {
+            // Use CompactRecipeCard for recent view, or regular RecipeCard for other views
+            return mode === 'recent' ? (
+              <CompactRecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                onFavoriteToggle={onFavoriteToggle}
+                isFavorite={isFavorite(recipe.id)}
+                allowDelete={true}
+                onDelete={onDeleteRecipe ? 
+                  () => {
+                    Alert.alert(
+                      'Remove Recipe',
+                      `Are you sure you want to remove "${recipe.title}" from your recent recipes?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { 
+                          text: 'Remove', 
+                          onPress: () => onDeleteRecipe(recipe.id),
+                          style: 'destructive' 
+                        },
+                      ]
+                    );
+                  } : undefined
+                }
+              />
+            ) : (
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                onFavoriteToggle={onFavoriteToggle}
+                isFavorite={isFavorite(recipe.id)}
+                compact={false}
+                allowDelete={mode === 'favorites'}
+                onDelete={onDeleteRecipe ? 
+                  () => {
+                    Alert.alert(
+                      'Remove Recipe',
+                      `Are you sure you want to remove "${recipe.title}" from your favorites?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { 
+                          text: 'Remove', 
+                          onPress: () => onDeleteRecipe(recipe.id),
+                          style: 'destructive' 
+                        },
+                      ]
+                    );
+                  } : undefined
+                }
+              />
+            );
+          })}
         </View>
       ))}
     </View>
@@ -242,6 +270,13 @@ const styles = StyleSheet.create({
   recipeGroup: {
     marginBottom: theme.spacing.lg,
   },
+  recentRecipeGroup: {
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.md,
+    paddingBottom: theme.spacing.sm,
+    marginHorizontal: theme.spacing.sm,
+  },
   preferencesText: {
     fontSize: 12,
     color: theme.colors.text.secondary,
@@ -259,5 +294,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.text.primary,
     fontStyle: 'normal',
+    paddingHorizontal: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
   },
 });
