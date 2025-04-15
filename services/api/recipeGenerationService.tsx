@@ -243,7 +243,7 @@ export class GeminiService {
         }
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
-        return MockGeminiService.generateRecipes();
+        return [];
       }
       
       // Add unique IDs and preferences to the recipes
@@ -276,7 +276,8 @@ export class GeminiService {
       
     } catch (error) {
       console.error('Gemini API error:', error);
-      return MockGeminiService.generateRecipes();
+      // Graceful error handling: return empty array instead of mock recipes
+      return [];
     }
   }
 }
@@ -366,7 +367,9 @@ export class MockGeminiService {
     
     // Randomly fail sometimes to test error handling
     if (Math.random() < 0.1) {
-      throw new Error('Failed to generate recipes');
+      // Graceful error handling: return empty array instead of throwing
+      console.error('Failed to generate recipes');
+      return [];
     }
     
     // Filter mock recipes based on preferences
