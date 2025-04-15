@@ -16,6 +16,11 @@ interface RecipeListProps {
   isFavorite: (recipeId: string) => boolean;
   mode?: 'default' | 'recent' | 'favorites';
   onDeleteRecipe?: (recipeId: string) => void;
+  // Add an optional sortInfo property
+  sortInfo?: {
+    type: string;
+    order: string;
+  };
 }
 
 export default function RecipeList({

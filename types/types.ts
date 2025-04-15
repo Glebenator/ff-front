@@ -22,6 +22,15 @@ export type SortType =
   | 'date-added-newest' 
   | 'date-added-oldest';
 
+// Recipe sorting types
+export type RecipeSortType = 
+  | 'name-asc' 
+  | 'name-desc' 
+  | 'date-generated-newest' 
+  | 'date-generated-oldest' 
+  | 'ingredients-asc' 
+  | 'ingredients-desc';
+
 // Category icon mapping type
 export interface CategoryIconMapping {
   [key: string]: React.ComponentProps<typeof import('@expo/vector-icons').Ionicons>['name'];

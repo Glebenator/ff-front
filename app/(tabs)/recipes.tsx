@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, ScrollView, Text, StyleSheet, RefreshControl } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import { useRecipes } from '@/hooks/useRecipes';
@@ -8,10 +9,16 @@ import RecipeList from '@/components/recipes/RecipeList';
 import { type RecipePreferences } from '@/hooks/useRecipes';
 import TabNavigation from '@/components/recipes/TabNavigation';
 import PreferencesSection from '@/components/recipes/PreferencesSection';
+import { RecipeSortModal, SortButton } from '@/components/recipes/sort';
+import { type RecipeSortType } from '@/types/types';
 
 export default function RecipeScreen() {
   // Tab state
   const [activeTab, setActiveTab] = useState<'suggested' | 'favorites' | 'recent'>('suggested');
+  
+  // Sorting state
+  const [sortOrder, setSortOrder] = useState<RecipeSortType>('name-asc');
+  const [isSortModalVisible, setIsSortModalVisible] = useState(false);
   
   // Preferences state
   const [preferences, setPreferences] = useState<RecipePreferences>({
@@ -79,6 +86,66 @@ export default function RecipeScreen() {
 
   // Get recipes based on active tab
   const getDisplayRecipes = () => {
+    let displayRecipes = [];
+    
+    switch (activeTab) {
+      case 'favorites':
+        displayRecipes = favorites || [];
+        break;
+      case 'suggested':
+        displayRecipes = recipes || [];
+        break;
+      case 'recent':
+        displayRecipes = recentRecipes || [];
+        break;
+      default:
+        displayRecipes = [];
+    }
+    
+    // Apply sorting
+    return sortRecipes(displayRecipes);
+  };
+  
+  // Sort recipes based on selected sort order
+  const sortRecipes = useCallback((recipesToSort) => {
+    if (!recipesToSort || recipesToSort.length === 0) return [];
+    
+    const sortedRecipes = [...recipesToSort];
+    
+    switch (sortOrder) {
+      case 'name-asc':
+        sortedRecipes.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'name-desc':
+        sortedRecipes.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      case 'date-generated-newest':
+        sortedRecipes.sort((a, b) => {
+          const dateA = a.generationPreferences?.timestamp ? new Date(a.generationPreferences.timestamp) : new Date(0);
+          const dateB = b.generationPreferences?.timestamp ? new Date(b.generationPreferences.timestamp) : new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
+        break;
+      case 'date-generated-oldest':
+        sortedRecipes.sort((a, b) => {
+          const dateA = a.generationPreferences?.timestamp ? new Date(a.generationPreferences.timestamp) : new Date(0);
+          const dateB = b.generationPreferences?.timestamp ? new Date(b.generationPreferences.timestamp) : new Date(0);
+          return dateA.getTime() - dateB.getTime();
+        });
+        break;
+      case 'ingredients-asc':
+        sortedRecipes.sort((a, b) => (a.ingredients?.length || 0) - (b.ingredients?.length || 0));
+        break;
+      case 'ingredients-desc':
+        sortedRecipes.sort((a, b) => (b.ingredients?.length || 0) - (a.ingredients?.length || 0));
+        break;
+    }
+    
+    return sortedRecipes;
+  }, [sortOrder]);
+  
+  // Original getDisplayRecipes function - replaced with the above
+  const _getDisplayRecipes = () => {
     switch (activeTab) {
       case 'favorites':
         return favorites || [];
@@ -97,6 +164,18 @@ export default function RecipeScreen() {
         activeTab={activeTab} 
         onChangeTab={setActiveTab} 
       />
+      
+      {getDisplayRecipes().length > 0 && (
+        <View style={styles.sortContainer}>
+          <Text style={styles.sortLabel}>Sort</Text>
+          <View style={styles.sortButtonContainer}>
+            <SortButton
+              sortOrder={sortOrder}
+              onPress={() => setIsSortModalVisible(true)}
+            />
+          </View>
+        </View>
+      )}
       
       {isRefreshing && (
         <View style={styles.refreshIndicator}>
@@ -187,6 +266,13 @@ export default function RecipeScreen() {
           </View>
         )}
       </ScrollView>
+      
+      <RecipeSortModal
+        visible={isSortModalVisible}
+        sortOrder={sortOrder}
+        setSortOrder={setSortOrder}
+        onClose={() => setIsSortModalVisible(false)}
+      />
     </View>
   );
 }
@@ -238,5 +324,22 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.text.tertiary,
     textAlign: 'center',
+  },
+  sortContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
+  },
+  sortLabel: {
+    fontSize: theme.fontSize.md,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  sortButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   }
 });
