@@ -46,15 +46,32 @@ export default function RecipeScreen() {
   
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
 
-  // Track tab changes to save recipes to recent
-  useEffect(() => {
-    const prevTab = activeTab;
-    return () => {
-      if (prevTab === 'suggested' && recipes.length > 0) {
-        saveToRecent();
-      }
-    };
-  }, [activeTab, recipes, saveToRecent]);
+  // Add recently viewed recipes directly
+  const addRecipeToRecents = useCallback((recipe) => {
+    console.log('Adding single recipe to recents:', recipe.id);
+    // Create a shallow copy of recentRecipes
+    const updatedRecents = [...recentRecipes];
+    
+    // Check if recipe already exists in recents
+    const existingIndex = updatedRecents.findIndex(r => r.id === recipe.id);
+    
+    // If it exists, remove it from its current position
+    if (existingIndex !== -1) {
+      updatedRecents.splice(existingIndex, 1);
+    }
+    
+    // Add the recipe to the beginning of the array
+    updatedRecents.unshift(recipe);
+    
+    // Directly save to AsyncStorage
+    AsyncStorage.setItem('fridgefriend_recent_recipes', JSON.stringify(updatedRecents))
+      .then(() => {
+        console.log('Saved recipe to recents storage successfully');
+      })
+      .catch(error => {
+        console.error('Error saving to recents:', error);
+      });
+  }, [recentRecipes]);
 
   // Handlers
   const handlePreferenceSelect = useCallback((key: keyof Omit<RecipePreferences, 'mealType'>) => {
@@ -208,6 +225,7 @@ export default function RecipeScreen() {
                 <Ionicons name="heart" size={48} color={theme.colors.text.secondary} />
                 <Text style={styles.emptyText}>No favorite recipes yet</Text>
                 <Text style={styles.emptySubText}>Heart the recipes you love to save them here</Text>
+                <Text style={styles.debugText}>Favorites count: {favorites?.length || 0}</Text>
               </View>
             ) : (
               <>
@@ -240,6 +258,7 @@ export default function RecipeScreen() {
                 <Ionicons name="time" size={48} color={theme.colors.text.secondary} />
                 <Text style={styles.emptyText}>No recent recipes</Text>
                 <Text style={styles.emptySubText}>Generate some recipes to see them here</Text>
+                <Text style={styles.debugText}>Recent count: {recentRecipes?.length || 0}</Text>
               </View>
             ) : (
               <>
@@ -335,8 +354,11 @@ const styles = StyleSheet.create({
     marginBottom: -theme.spacing.xs,
     zIndex: 1,
   },
-  sortButtonContainer: {
-    flexDirection: 'row',
+  debugText: {
+    marginTop: theme.spacing.sm,
+    fontSize: theme.fontSize.sm,
+    color: 'gray',
+    fontFamily: 'monospace',
   },
 
 });

@@ -6,7 +6,7 @@ import { RecipeMatcherService } from '@/services/recipeMatcherService';
 import { useFocusEffect } from '@react-navigation/native';
 import { ingredientDb } from '@/services/database/ingredientDb';
 
-const RECENT_RECIPES_STORAGE_KEY = 'fridgefriend_recent_recipes';
+const RECENT_RECIPES_STORAGE_KEY = 'fridgefriend_recent_recipes'; // Standard key
 
 export interface RecipePreferences {
   mealType: 'breakfast' | 'lunch-dinner';
@@ -70,6 +70,7 @@ export const useRecipes = () => {
   useEffect(() => {
     const saveRecentRecipes = async () => {
       try {
+        console.log('Saving recent recipes to storage:', recentRecipes.length);
         await AsyncStorage.setItem(RECENT_RECIPES_STORAGE_KEY, JSON.stringify(recentRecipes));
       } catch (err) {
         console.error('Failed to save recent recipes:', err);
@@ -211,6 +212,8 @@ export const useRecipes = () => {
   }, []);
 
   const saveToRecent = useCallback(() => {
+    console.log('saveToRecent called with recipes:', recipes.length);
+    
     setRecentRecipes(prevRecent => {
       // Combine current recipes with recent ones, avoiding duplicates by ID
       const recipeIds = new Set(prevRecent.map(r => r.id));
@@ -218,12 +221,17 @@ export const useRecipes = () => {
       
       recipes.forEach(recipe => {
         if (!recipeIds.has(recipe.id)) {
-          newRecent.unshift(recipe);
+          console.log('Adding to recent:', recipe.id);
+          newRecent.unshift(recipe); // Add to beginning
           recipeIds.add(recipe.id);
         }
       });
       
-      return newRecent;
+      // Keep the recent list to a reasonable size
+      const trimmedRecent = newRecent.slice(0, 20);
+      console.log('New recent recipe count:', trimmedRecent.length);
+      
+      return trimmedRecent;
     });
   }, [recipes]);
 
