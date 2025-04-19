@@ -1,12 +1,14 @@
+// /home/coolcake/myworkspace/fridgefriend/ff/app/(tabs)/recipes.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { View, ScrollView, Text, StyleSheet, RefreshControl, Pressable } from 'react-native';
+import { View, ScrollView, Text, StyleSheet, RefreshControl, Pressable, Alert } from 'react-native'; // Added Alert
+// REMOVE: import AsyncStorage from '@react-native-async-storage/async-storage'; // No longer needed here
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
 import { useRecipes } from '@/hooks/useRecipes';
 import { useFavorites } from '@/hooks/useFavorites';
 import RecipeList from '@/components/recipes/RecipeList';
-import { type RecipePreferences } from '@/hooks/useRecipes';
+import { type RecipePreferences, type Recipe } from '@/hooks/useRecipes'; // Import Recipe type
 import PreferencesSection from '@/components/recipes/PreferencesSection';
 import { RecipeSortModal, SortButton } from '@/components/recipes/sort';
 import { type RecipeSortType } from '@/types/types';
@@ -15,11 +17,11 @@ import AnimatedTabNavigation from '@/components/recipes/AnimatedTabNavigation';
 export default function RecipeScreen() {
   // Tab state
   const [activeTab, setActiveTab] = useState<'suggested' | 'favorites' | 'recent'>('suggested');
-  
+
   // Sorting state
   const [sortOrder, setSortOrder] = useState<RecipeSortType>('name-asc');
   const [isSortModalVisible, setIsSortModalVisible] = useState(false);
-  
+
   // Preferences state
   const [preferences, setPreferences] = useState<RecipePreferences>({
     mealType: 'lunch-dinner',
@@ -32,46 +34,23 @@ export default function RecipeScreen() {
   });
 
   // Hooks
-  const { 
-    recipes, 
-    recentRecipes, 
-    isLoading, 
+  const {
+    recipes,
+    recentRecipes,
+    isLoading,
     isRefreshing,
-    error, 
-    generateRecipes, 
-    saveToRecent,
+    error,
+    generateRecipes,
+    // saveToRecent, // We might not need this directly if generateRecipes handles it
     refreshRecipes,
-    removeFromRecent 
+    removeFromRecent,
+    addSingleRecent // Use the hook's function to add recents
   } = useRecipes();
-  
+
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
 
-  // Add recently viewed recipes directly
-  const addRecipeToRecents = useCallback((recipe) => {
-    console.log('Adding single recipe to recents:', recipe.id);
-    // Create a shallow copy of recentRecipes
-    const updatedRecents = [...recentRecipes];
-    
-    // Check if recipe already exists in recents
-    const existingIndex = updatedRecents.findIndex(r => r.id === recipe.id);
-    
-    // If it exists, remove it from its current position
-    if (existingIndex !== -1) {
-      updatedRecents.splice(existingIndex, 1);
-    }
-    
-    // Add the recipe to the beginning of the array
-    updatedRecents.unshift(recipe);
-    
-    // Directly save to AsyncStorage
-    AsyncStorage.setItem('fridgefriend_recent_recipes', JSON.stringify(updatedRecents))
-      .then(() => {
-        console.log('Saved recipe to recents storage successfully');
-      })
-      .catch(error => {
-        console.error('Error saving to recents:', error);
-      });
-  }, [recentRecipes]);
+  // REMOVE: Incorrect direct AsyncStorage manipulation
+  // const addRecipeToRecents = useCallback((recipe) => { ... });
 
   // Handlers
   const handlePreferenceSelect = useCallback((key: keyof Omit<RecipePreferences, 'mealType'>) => {
@@ -91,46 +70,54 @@ export default function RecipeScreen() {
   const handleGenerate = useCallback(async () => {
     try {
       await generateRecipes(preferences, { accumulate: true });
+      // Optionally switch to suggested tab after generating
+      // setActiveTab('suggested');
     } catch (err) {
       console.error('Failed to generate recipes:', err);
     }
   }, [generateRecipes, preferences]);
-  
+
   // Handle pull-to-refresh
   const handleRefresh = useCallback(() => {
     refreshRecipes();
   }, [refreshRecipes]);
 
+  // Handle deleting a recipe (from favorites or recent)
+  const handleDeleteRecipe = useCallback((recipe: Recipe) => {
+    if (!recipe) return;
+
+    const listName = activeTab === 'favorites' ? 'favorites' : 'recent recipes';
+    const deleteAction = activeTab === 'favorites' ? toggleFavorite : removeFromRecent;
+    const recipeId = recipe.id;
+
+    Alert.alert(
+      `Remove Recipe`,
+      `Are you sure you want to remove "${recipe.title}" from your ${listName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          onPress: () => {
+            if (activeTab === 'favorites') {
+              deleteAction(recipe); // toggleFavorite needs the full recipe object
+            } else {
+              deleteAction(recipeId); // removeFromRecent needs the ID
+            }
+            console.log(`Removed ${recipeId} from ${listName}`);
+          },
+          style: 'destructive'
+        },
+      ]
+    );
+  }, [activeTab, toggleFavorite, removeFromRecent]);
 
 
-  // Get recipes based on active tab
-  const getDisplayRecipes = () => {
-    let displayRecipes = [];
-    
-    switch (activeTab) {
-      case 'favorites':
-        displayRecipes = favorites || [];
-        break;
-      case 'suggested':
-        displayRecipes = recipes || [];
-        break;
-      case 'recent':
-        displayRecipes = recentRecipes || [];
-        break;
-      default:
-        displayRecipes = [];
-    }
-    
-    // Apply sorting
-    return sortRecipes(displayRecipes);
-  };
-  
   // Sort recipes based on selected sort order
-  const sortRecipes = useCallback((recipesToSort) => {
+  const sortRecipes = useCallback((recipesToSort: Recipe[]): Recipe[] => {
     if (!recipesToSort || recipesToSort.length === 0) return [];
-    
+
     const sortedRecipes = [...recipesToSort];
-    
+
     switch (sortOrder) {
       case 'name-asc':
         sortedRecipes.sort((a, b) => a.title.localeCompare(b.title));
@@ -139,43 +126,74 @@ export default function RecipeScreen() {
         sortedRecipes.sort((a, b) => b.title.localeCompare(a.title));
         break;
       case 'date-generated-newest':
+        // Sort by timestamp, handling potentially missing timestamps
         sortedRecipes.sort((a, b) => {
-          const dateA = a.generationPreferences?.timestamp ? new Date(a.generationPreferences.timestamp) : new Date(0);
-          const dateB = b.generationPreferences?.timestamp ? new Date(b.generationPreferences.timestamp) : new Date(0);
-          return dateB.getTime() - dateA.getTime();
+          const timeA = a.generationPreferences?.timestamp ?? 0;
+          const timeB = b.generationPreferences?.timestamp ?? 0;
+          return timeB - timeA;
         });
         break;
       case 'date-generated-oldest':
         sortedRecipes.sort((a, b) => {
-          const dateA = a.generationPreferences?.timestamp ? new Date(a.generationPreferences.timestamp) : new Date(0);
-          const dateB = b.generationPreferences?.timestamp ? new Date(b.generationPreferences.timestamp) : new Date(0);
-          return dateA.getTime() - dateB.getTime();
+          const timeA = a.generationPreferences?.timestamp ?? 0;
+          const timeB = b.generationPreferences?.timestamp ?? 0;
+          return timeA - timeB;
         });
         break;
       case 'ingredients-asc':
-        sortedRecipes.sort((a, b) => (a.ingredients?.length || 0) - (b.ingredients?.length || 0));
+        // Sort by total ingredients (matching + missing)
+        sortedRecipes.sort((a, b) =>
+          (a.matchingIngredients.length + a.missingIngredients.length) -
+          (b.matchingIngredients.length + b.missingIngredients.length)
+        );
         break;
       case 'ingredients-desc':
-        sortedRecipes.sort((a, b) => (b.ingredients?.length || 0) - (a.ingredients?.length || 0));
+        sortedRecipes.sort((a, b) =>
+          (b.matchingIngredients.length + b.missingIngredients.length) -
+          (a.matchingIngredients.length + a.missingIngredients.length)
+        );
         break;
+      // Add cases for match percentage if needed
+      // case 'match-percentage-desc':
+      //   sortedRecipes.sort((a, b) => (b.matchPercentage ?? 0) - (a.matchPercentage ?? 0));
+      //   break;
+      // case 'match-percentage-asc':
+      //   sortedRecipes.sort((a, b) => (a.matchPercentage ?? 0) - (b.matchPercentage ?? 0));
+      //   break;
     }
-    
+
     return sortedRecipes;
   }, [sortOrder]);
+
+  // Get recipes based on active tab and apply sorting
+  const displayRecipes = useMemo(() => {
+    let recipesToDisplay: Recipe[] = [];
+    switch (activeTab) {
+      case 'favorites':
+        recipesToDisplay = favorites || [];
+        break;
+      case 'suggested':
+        recipesToDisplay = recipes || [];
+        break;
+      case 'recent':
+        recipesToDisplay = recentRecipes || [];
+        break;
+    }
+    return sortRecipes(recipesToDisplay);
+  }, [activeTab, favorites, recipes, recentRecipes, sortRecipes]);
+
 
   return (
     <View style={styles.container}>
       <AnimatedTabNavigation activeTab={activeTab} onChangeTab={setActiveTab} />
-      
-      {/* We'll remove the standalone sort button since it's now integrated with the header */}
-      
+
       {isRefreshing && (
         <View style={styles.refreshIndicator}>
           <Text style={styles.refreshText}>Updating recipes with latest ingredients...</Text>
         </View>
       )}
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
@@ -188,7 +206,7 @@ export default function RecipeScreen() {
       >
         {activeTab === 'suggested' && (
           <>
-            <PreferencesSection 
+            <PreferencesSection
               preferences={preferences}
               isLoading={isLoading}
               onMealTypeChange={handleMealTypeChange}
@@ -199,7 +217,7 @@ export default function RecipeScreen() {
             <View style={styles.recipeListSection}>
               <View style={styles.recipeListHeader}>
               <Text style={sharedStyles.subtitle as any}>
-                {getDisplayRecipes().length > 0 ? 'Available Recipes' : 'No Recipes Generated Yet'}
+                {displayRecipes.length > 0 ? 'Available Recipes' : 'No Recipes Generated Yet'}
               </Text>
               <SortButton
                 sortOrder={sortOrder}
@@ -207,12 +225,13 @@ export default function RecipeScreen() {
               />
             </View>
               <RecipeList
-                recipes={getDisplayRecipes()}
-                isLoading={isLoading}
+                recipes={displayRecipes}
+                isLoading={isLoading && displayRecipes.length === 0} // Show loading only if list is empty
                 error={error}
                 onRetry={handleGenerate}
                 onFavoriteToggle={toggleFavorite}
                 isFavorite={isFavorite}
+                onAddToRecent={addSingleRecent} // Pass the hook function
               />
             </View>
           </>
@@ -220,17 +239,17 @@ export default function RecipeScreen() {
 
         {activeTab === 'favorites' && (
           <View style={styles.recipeListSection}>
-            {getDisplayRecipes().length === 0 ? (
+            {displayRecipes.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="heart" size={48} color={theme.colors.text.secondary} />
                 <Text style={styles.emptyText}>No favorite recipes yet</Text>
                 <Text style={styles.emptySubText}>Heart the recipes you love to save them here</Text>
-                <Text style={styles.debugText}>Favorites count: {favorites?.length || 0}</Text>
+                {/* <Text style={styles.debugText}>Favorites count: {favorites?.length || 0}</Text> */}
               </View>
             ) : (
               <>
                 <View style={styles.recipeListHeader}>
-                  <Text style={sharedStyles.subtitle as any}>Favorites</Text>
+                  <Text style={sharedStyles.subtitle as any}>Favorites ({displayRecipes.length})</Text>
                   <SortButton
                     sortOrder={sortOrder}
                     onPress={() => setIsSortModalVisible(true)}
@@ -238,13 +257,14 @@ export default function RecipeScreen() {
                 </View>
                 <RecipeList
                   mode="favorites"
-                  recipes={getDisplayRecipes()}
-                  isLoading={false}
+                  recipes={displayRecipes}
+                  isLoading={false} // Favorites loading is handled by useFavorites hook
                   error={null}
-                  onRetry={() => {}}
+                  onRetry={() => {}} // No retry needed here
                   onFavoriteToggle={toggleFavorite}
                   isFavorite={isFavorite}
-                  onDeleteRecipe={(recipeId) => toggleFavorite(getDisplayRecipes().find(r => r.id === recipeId))}
+                  onDeleteRecipe={handleDeleteRecipe} // Use centralized delete handler
+                  onAddToRecent={addSingleRecent} // Pass the hook function
                 />
               </>
             )}
@@ -253,17 +273,17 @@ export default function RecipeScreen() {
 
         {activeTab === 'recent' && (
           <View style={styles.recipeListSection}>
-            {getDisplayRecipes().length === 0 ? (
+            {displayRecipes.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="time" size={48} color={theme.colors.text.secondary} />
                 <Text style={styles.emptyText}>No recent recipes</Text>
-                <Text style={styles.emptySubText}>Generate some recipes to see them here</Text>
-                <Text style={styles.debugText}>Recent count: {recentRecipes?.length || 0}</Text>
+                <Text style={styles.emptySubText}>Generate or view recipes to see them here</Text>
+                {/* <Text style={styles.debugText}>Recent count: {recentRecipes?.length || 0}</Text> */}
               </View>
             ) : (
               <>
                 <View style={styles.recipeListHeader}>
-                  <Text style={sharedStyles.subtitle as any}>Recent Recipes</Text>
+                  <Text style={sharedStyles.subtitle as any}>Recent Recipes ({displayRecipes.length})</Text>
                   <SortButton
                     sortOrder={sortOrder}
                     onPress={() => setIsSortModalVisible(true)}
@@ -271,20 +291,21 @@ export default function RecipeScreen() {
                 </View>
                 <RecipeList
                   mode="recent"
-                  recipes={getDisplayRecipes()}
-                  isLoading={false}
+                  recipes={displayRecipes}
+                  isLoading={false} // Recent loading is handled by useRecipes hook
                   error={null}
-                  onRetry={() => {}}
+                  onRetry={() => {}} // No retry needed here
                   onFavoriteToggle={toggleFavorite}
                   isFavorite={isFavorite}
-                  onDeleteRecipe={removeFromRecent}
+                  onDeleteRecipe={handleDeleteRecipe} // Use centralized delete handler
+                  onAddToRecent={addSingleRecent} // Pass the hook function
                 />
               </>
             )}
           </View>
         )}
       </ScrollView>
-      
+
       <RecipeSortModal
         visible={isSortModalVisible}
         sortOrder={sortOrder}
@@ -331,7 +352,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.xl,
-    minHeight: 300,
+    minHeight: 300, // Ensure empty state takes up space
   },
   emptyText: {
     marginTop: theme.spacing.md,
@@ -346,14 +367,14 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     textAlign: 'center',
   },
-  sortContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.xs,
-    marginBottom: -theme.spacing.xs,
-    zIndex: 1,
-  },
+  // sortContainer: { // Removed as SortButton is now in header
+  //   flexDirection: 'row',
+  //   justifyContent: 'flex-end',
+  //   paddingHorizontal: theme.spacing.md,
+  //   marginTop: theme.spacing.xs,
+  //   marginBottom: -theme.spacing.xs,
+  //   zIndex: 1,
+  // },
   debugText: {
     marginTop: theme.spacing.sm,
     fontSize: theme.fontSize.sm,

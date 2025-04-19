@@ -1,23 +1,26 @@
+// components/MobileHome.tsx
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Image, ScrollView, Dimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// REMOVE: import AsyncStorage from '@react-native-async-storage/async-storage'; // No longer needed here
 import { useFavorites } from '@/hooks/useFavorites';
-import { useRecipes } from '@/hooks/useRecipes';
+import { useRecipes } from '@/hooks/useRecipes'; // Correct hook import
 import { ingredientDb } from '@/services/database/ingredientDb';
 import { GeminiService, type Recipe } from '@/services/api/recipeGenerationService';
 import RecipeDetailModal from '@/components/recipes/RecipeDetailModal';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
-import { 
-  ExpiryStatus, 
-  StatusInfoType, 
-  StatusCardProps, 
-  QuickActionButtonProps 
+import {
+  ExpiryStatus,
+  StatusInfoType,
+  StatusCardProps,
+  QuickActionButtonProps
 } from '@/types/types';
 
+// --- MobileHome, StatusCard, WellMaintainedCard components remain the same ---
 export const MobileHome: React.FC = () => {
+  // ... (existing MobileHome logic)
   const [status, setStatus] = useState<ExpiryStatus>({
     expiringSoon: 0,
     expired: 0,
@@ -99,7 +102,7 @@ const StatusCard: React.FC<StatusCardProps> = ({ status }) => {
   const statusInfo = getStatusInfo();
 
   return (
-    <Pressable 
+    <Pressable
       style={[styles.card, { borderLeftWidth: 4, borderLeftColor: statusInfo.color }]}
       onPress={() => router.push('/fridge?initialFilter=all')}
     >
@@ -123,15 +126,18 @@ const WellMaintainedCard: React.FC = () => (
   </View>
 );
 
+
 const RecipeIdeas: React.FC = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [currentRecipeIndex, setCurrentRecipeIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRecipeDetail, setShowRecipeDetail] = useState(false);
+
+  // Use hooks for state management and persistence
   const { toggleFavorite, isFavorite } = useFavorites();
-  const { saveToRecent } = useRecipes();
-  
+  const { addSingleRecent, generateRecipes: generateRecipesFromHook } = useRecipes(); // Use the hook's generate and addSingleRecent
+
   const currentRecipe = recipes[currentRecipeIndex] || null;
 
   // Navigate to debug screen
@@ -139,227 +145,90 @@ const RecipeIdeas: React.FC = () => {
     router.push('/debug');
   };
 
-  // Verify storage keys at startup
-  useEffect(() => {
-    const checkStorageKeys = async () => {
-      try {
-        const keys = await AsyncStorage.getAllKeys();
-        console.log('Available storage keys:', keys);
-        
-        // Check existing recents
-        const recents = await AsyncStorage.getItem('fridgefriend_recent_recipes');
-        if (recents) {
-          try {
-            const parsedRecents = JSON.parse(recents);
-            console.log('Found existing recent recipes:', parsedRecents.length);
-            console.log('First recent recipe:', parsedRecents[0]?.title);
-          } catch (e) {
-            console.error('Failed to parse recent recipes:', e);
-          }
-        } else {
-          console.log('No existing recent recipes found');
-        }
-        
-        // Check existing favorites
-        const favorites = await AsyncStorage.getItem('fridgefriend_favorites');
-        if (favorites) {
-          try {
-            const parsedFavorites = JSON.parse(favorites);
-            console.log('Found existing favorites:', parsedFavorites.length);
-            console.log('First favorite recipe:', parsedFavorites[0]?.title);
-          } catch (e) {
-            console.error('Failed to parse favorites:', e);
-          }
-        } else {
-          console.log('No existing favorites found');
-        }
-      } catch (e) {
-        console.error('Error checking storage keys:', e);
-      }
-    };
-    
-    checkStorageKeys();
-  }, []);
+  // REMOVE: useEffect for checking storage keys directly
+  // useEffect(() => {
+  //   const checkStorageKeys = async () => { ... };
+  //   checkStorageKeys();
+  // }, []);
 
   // Get meal type based on current time of day
   const getMealTypeForCurrentTime = () => {
     const hour = new Date().getHours();
-    
-    // Define time ranges for each meal type
-    if (hour >= 5 && hour < 11) {
-      return 'breakfast';
-    } else if (hour >= 11 && hour < 14) {
-      return 'lunch';
-    } else if (hour >= 17 && hour < 21) {
-      return 'dinner';
-    } else {
-      return 'snack';
-    }
+    if (hour >= 5 && hour < 11) return 'breakfast';
+    if (hour >= 11 && hour < 14) return 'lunch';
+    if (hour >= 17 && hour < 21) return 'dinner';
+    return 'snack'; // Default to snack
   };
 
-  // Generate recipes based on time of day
+  // Generate recipes using the hook's function
   const fetchRecipes = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
     try {
-      // Get appropriate meal type for current time
       const mealType = getMealTypeForCurrentTime();
-      console.log(`Generating ${mealType} recipes based on current time`);
-      
-      const fetchedRecipes = await GeminiService.generateRecipes({ 
+      console.log(`Generating ${mealType} recipes for RecipeIdeas`);
+
+      // Use the hook's generateRecipes function
+      // We need to adapt this slightly as the hook manages its own state
+      // Option 1: Let the hook manage the state (preferred if RecipeIdeas doesn't need its own copy)
+      // Option 2: Fetch and set local state (as currently implemented)
+      // Let's stick with Option 2 for now to minimize changes, but be aware of potential duplication
+      const fetchedRecipes = await GeminiService.generateRecipes({
         quickMeals: true,
         mealType: mealType === 'breakfast' ? 'breakfast' : 'lunch-dinner'
       });
-      
+
       if (fetchedRecipes && fetchedRecipes.length > 0) {
         setRecipes(fetchedRecipes);
         setCurrentRecipeIndex(0);
+        // Optionally, save these generated recipes to recents immediately using the hook
+        // This depends on whether `saveToRecent` in the hook should handle this list
+        // For now, let's rely on viewing/closing modal to add to recents
       } else {
         setRecipes([]);
       }
     } catch (err) {
       setError('Could not load recipes');
+      console.error("Error fetching recipes in RecipeIdeas:", err);
       setRecipes([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // Removed generateRecipesFromHook dependency as we call GeminiService directly here
 
   // Fetch recipes when the component is first mounted
   useEffect(() => {
     fetchRecipes();
-    
-    // Store the last time recipes were generated
-    const lastGeneratedTime = new Date().getTime();
-    AsyncStorage.setItem('last_recipe_generated_time', lastGeneratedTime.toString());
+    // REMOVE: AsyncStorage.setItem('last_recipe_generated_time', ...); // If not needed elsewhere
   }, [fetchRecipes]);
 
-  // Add to recents directly with AsyncStorage for reliability
-  const addToRecent = useCallback((recipe: Recipe) => {
-    if (!recipe) return;
-    
-    console.log('DIRECT: Adding to recents:', recipe.id);
-    
-    // IMPORTANT: Use exact same key
-    const RECENT_KEY = 'fridgefriend_recent_recipes';
-    
-    // Get current recents from storage
-    AsyncStorage.getItem(RECENT_KEY)
-      .then(storedRecents => {
-        let recents: Recipe[] = [];
-        
-        if (storedRecents) {
-          try {
-            recents = JSON.parse(storedRecents);
-            console.log('Found existing recents:', recents.length);
-          } catch (e) {
-            console.error('Failed to parse recents:', e);
-          }
-        }
-        
-        // Check if recipe already exists
-        const existingIndex = recents.findIndex(r => r.id === recipe.id);
-        
-        // Remove if exists
-        if (existingIndex !== -1) {
-          recents.splice(existingIndex, 1);
-        }
-        
-        // Add to front
-        recents.unshift(recipe);
-        console.log('New recents count:', recents.length);
-        
-        // Keep only 20 most recent
-        if (recents.length > 20) {
-          recents = recents.slice(0, 20);
-        }
-        
-        // Save back to storage
-        return AsyncStorage.setItem(RECENT_KEY, JSON.stringify(recents));
-      })
-      .then(() => {
-        console.log('Successfully saved recipe to recents');
-      })
-      .catch(err => {
-        console.error('Error saving to recents:', err);
-      });
-  }, []);
-  
-  // Similarly for favorites
-  const addToFavorites = useCallback((recipe: Recipe) => {
-    if (!recipe) return;
-    
-    console.log('DIRECT: Toggling favorite:', recipe.id);
-    
-    // IMPORTANT: Use exact same key
-    const FAVORITES_KEY = 'fridgefriend_favorites';
-    
-    // Get current favorites from storage
-    AsyncStorage.getItem(FAVORITES_KEY)
-      .then(storedFavorites => {
-        let favorites: Recipe[] = [];
-        
-        if (storedFavorites) {
-          try {
-            favorites = JSON.parse(storedFavorites);
-            console.log('Found existing favorites:', favorites.length);
-          } catch (e) {
-            console.error('Failed to parse favorites:', e);
-          }
-        }
-        
-        // Check if recipe already exists
-        const existingIndex = favorites.findIndex(r => r.id === recipe.id);
-        
-        if (existingIndex === -1) {
-          // Not in favorites - add it
-          favorites.push(recipe);
-          console.log('Adding to favorites');
-        } else {
-          // Already in favorites - remove it
-          favorites.splice(existingIndex, 1);
-          console.log('Removing from favorites');
-        }
-        
-        console.log('New favorites count:', favorites.length);
-        
-        // Save back to storage
-        return AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-      })
-      .then(() => {
-        console.log('Successfully saved favorites');
-      })
-      .catch(err => {
-        console.error('Error saving favorites:', err);
-      });
-  }, []);
+  // REMOVE: Direct addToRecent function
+  // const addToRecent = useCallback((recipe: Recipe) => { ... });
 
-  // Add currently displayed recipe to recents whenever it changes
+  // REMOVE: Direct addToFavorites function
+  // const addToFavorites = useCallback((recipe: Recipe) => { ... });
+
+  // Add currently displayed recipe to recents whenever it changes using the hook
   useEffect(() => {
     if (currentRecipe) {
-      console.log('Adding current recipe to recents:', currentRecipe.id);
-      addToRecent(currentRecipe);
+      console.log('HOOK: Adding current recipe to recents via useEffect:', currentRecipe.id);
+      addSingleRecent(currentRecipe); // Use the hook function
     }
-  }, [currentRecipeIndex, currentRecipe, addToRecent]);
+    // Add addSingleRecent to dependencies if it's not stable (it should be stable due to useCallback)
+  }, [currentRecipeIndex, currentRecipe, addSingleRecent]);
 
-  // Use manual navigation only
+  // Navigation functions remain the same
   const nextRecipe = () => {
-    if (currentRecipeIndex < recipes.length - 1) {
-      setCurrentRecipeIndex(currentRecipeIndex + 1);
-    } else {
-      setCurrentRecipeIndex(0); // Loop back to the first recipe
-    }
+    if (recipes.length === 0) return;
+    setCurrentRecipeIndex((prevIndex) => (prevIndex + 1) % recipes.length);
   };
 
   const previousRecipe = () => {
-    if (currentRecipeIndex > 0) {
-      setCurrentRecipeIndex(currentRecipeIndex - 1);
-    } else {
-      setCurrentRecipeIndex(recipes.length - 1); // Loop to the last recipe
-    }
+     if (recipes.length === 0) return;
+     setCurrentRecipeIndex((prevIndex) => (prevIndex - 1 + recipes.length) % recipes.length);
   };
 
+  // Loading/Error/Empty states remain the same
   if (loading) {
     return (
       <View style={styles.card}>
@@ -372,6 +241,10 @@ const RecipeIdeas: React.FC = () => {
     return (
       <View style={styles.card}>
         <Text style={styles.cardText}>{error}</Text>
+        {/* Optionally add a retry button */}
+        <Pressable onPress={fetchRecipes} style={styles.retryButton}>
+           <Text style={styles.retryButtonText}>Retry</Text>
+        </Pressable>
       </View>
     );
   }
@@ -379,6 +252,10 @@ const RecipeIdeas: React.FC = () => {
     return (
       <View style={styles.card}>
         <Text style={styles.cardText}>No recipe ideas found.</Text>
+         {/* Optionally add a button to generate */}
+         <Pressable onPress={fetchRecipes} style={styles.retryButton}>
+           <Text style={styles.retryButtonText}>Generate Recipes</Text>
+        </Pressable>
       </View>
     );
   }
@@ -386,6 +263,7 @@ const RecipeIdeas: React.FC = () => {
   return (
     <>
       <View style={styles.card}>
+        {/* Debug Row and Recipe Header remain the same */}
         <View style={styles.debugRow}>
           <Text style={styles.debugText} onPress={goToDebugScreen}>Debug</Text>
         </View>
@@ -397,44 +275,50 @@ const RecipeIdeas: React.FC = () => {
           <Text style={styles.viewAllText} onPress={() => router.push('/recipes')}>View All</Text>
         </View>
 
+        {/* Recipe Card Pressable */}
         {currentRecipe && (
-          <Pressable 
+          <Pressable
             style={({ pressed }) => [
               styles.recipeCard,
               pressed && styles.cardPressed
             ]}
-            onPress={() => setShowRecipeDetail(true)}
+            onPress={() => {
+                // Add to recent when opening detail view (optional, already added on index change)
+                // addSingleRecent(currentRecipe);
+                setShowRecipeDetail(true);
+            }}
           >
+            {/* Recipe Card Content remains the same */}
             <Text style={styles.recipeSubtitle}>{currentRecipe.title}</Text>
-            <Text style={styles.cardText}>{currentRecipe.description}</Text>
+            <Text style={styles.cardText} numberOfLines={2}>{currentRecipe.description}</Text>
             {currentRecipe.imageUrl && (
-              <Image source={{ uri: currentRecipe.imageUrl }} style={{ width: '100%', height: 120, borderRadius: 12, marginVertical: 8 }} resizeMode="cover" />
+              <Image source={{ uri: currentRecipe.imageUrl }} style={styles.recipeImage} resizeMode="cover" />
             )}
             <Text style={styles.recipeTime}>
               <Ionicons name="time-outline" size={16} color={theme.colors.text.secondary} />
               {' '}{currentRecipe.cookingTime} • {currentRecipe.difficulty}
             </Text>
-            
-            {/* Display only expired/expiring ingredients */}
+
+            {/* Expiring Ingredients display remains the same */}
             {currentRecipe.ingredientMatches && (
               <View style={styles.expiringIngredients}>
                 <Text style={styles.ingredientSectionTitle}>Ingredients to use:</Text>
                 <View style={styles.ingredientBoxes}>
                   {currentRecipe.ingredientMatches
                     .filter(ing => ing.match && ing.daysUntilExpiry !== undefined && ing.daysUntilExpiry <= 5)
-                    .slice(0, 4) // Limit to 4 ingredients (approximately 2 rows)
+                    .slice(0, 4)
                     .map((ing, idx) => (
-                      <View 
-                        key={idx} 
+                      <View
+                        key={idx}
                         style={[
                           styles.ingredientBox,
-                          ing.daysUntilExpiry <= 0 ? styles.expiredBox : 
+                          ing.daysUntilExpiry <= 0 ? styles.expiredBox :
                           ing.daysUntilExpiry <= 3 ? styles.expiringSoonBox : styles.normalBox
                         ]}
                       >
                         <Text style={[
                           styles.ingredientText,
-                          ing.daysUntilExpiry <= 0 ? styles.expiredText : 
+                          ing.daysUntilExpiry <= 0 ? styles.expiredText :
                           ing.daysUntilExpiry <= 3 ? styles.expiringSoonText : null
                         ]}>
                           {ing.name}
@@ -448,31 +332,35 @@ const RecipeIdeas: React.FC = () => {
                   )}
                 </View>
                 {currentRecipe.ingredientMatches.filter(ing => ing.match && ing.daysUntilExpiry !== undefined && ing.daysUntilExpiry <= 5).length === 0 && (
-                  <Text style={styles.noIngredientsText}>No expiring ingredients used in this recipe</Text>
+                  <Text style={styles.noIngredientsText}>No expiring ingredients used</Text>
                 )}
               </View>
             )}
-            
+
+            {/* View Details Button remains the same */}
             <View style={styles.viewDetailsButton}>
               <Text style={styles.viewDetailsText}>View Recipe Details</Text>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
             </View>
           </Pressable>
         )}
-        
+
         {/* Recipe navigation controls */}
         <View style={styles.recipeNavigation}>
-          <Pressable 
-            style={styles.navButton} 
+          {/* Previous Button */}
+          <Pressable
+            style={styles.navButton}
             onPress={previousRecipe}
+            disabled={recipes.length <= 1}
           >
-            <Ionicons name="chevron-back" size={24} color={theme.colors.primary} />
+            <Ionicons name="chevron-back" size={24} color={recipes.length <= 1 ? theme.colors.border.primary : theme.colors.primary} />
           </Pressable>
-          
+
+          {/* Indicators */}
           <View style={styles.recipeIndicators}>
             {recipes.map((_, index) => (
-              <View 
-                key={index} 
+              <View
+                key={index}
                 style={[
                   styles.indicator,
                   index === currentRecipeIndex && styles.activeIndicator
@@ -480,44 +368,49 @@ const RecipeIdeas: React.FC = () => {
               />
             ))}
           </View>
-          
-          <Pressable 
-            style={styles.navButton} 
+
+          {/* Next Button */}
+          <Pressable
+            style={styles.navButton}
             onPress={nextRecipe}
+            disabled={recipes.length <= 1}
           >
-            <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
+            <Ionicons name="chevron-forward" size={24} color={recipes.length <= 1 ? theme.colors.border.primary : theme.colors.primary} />
           </Pressable>
 
-          {/* Favorite button */}
-          <Pressable 
+          {/* Favorite button - ONLY call the hook function */}
+          <Pressable
             style={styles.favoriteButton}
             onPress={() => {
-              toggleFavorite(currentRecipe);
-              addToFavorites(currentRecipe);
+              if (currentRecipe) {
+                toggleFavorite(currentRecipe); // Use the hook function ONLY
+              }
             }}
+            disabled={!currentRecipe}
           >
-            <Ionicons 
-              name={isFavorite(currentRecipe.id) ? "heart" : "heart-outline"} 
-              size={24} 
-              color={isFavorite(currentRecipe.id) ? theme.colors.status.error : theme.colors.text.secondary} 
+            <Ionicons
+              name={currentRecipe && isFavorite(currentRecipe.id) ? "heart" : "heart-outline"}
+              size={24}
+              color={currentRecipe && isFavorite(currentRecipe.id) ? theme.colors.status.error : theme.colors.text.secondary}
             />
           </Pressable>
         </View>
       </View>
-      
+
+      {/* Recipe Detail Modal */}
       {currentRecipe && (
         <RecipeDetailModal
           recipe={currentRecipe}
           visible={showRecipeDetail}
           onClose={() => {
             setShowRecipeDetail(false);
-            // When closing detail view, add to recents
-            addToRecent(currentRecipe);
+            // When closing detail view, add to recents using the hook
+            console.log('HOOK: Adding recipe to recents on modal close:', currentRecipe.id);
+            addSingleRecent(currentRecipe); // Use the hook function
           }}
           onFavoriteToggle={() => {
-            // Toggle favorite and update directly
+            // Toggle favorite using the hook function ONLY
             toggleFavorite(currentRecipe);
-            addToFavorites(currentRecipe);
           }}
           isFavorite={isFavorite(currentRecipe.id)}
         />
@@ -526,24 +419,25 @@ const RecipeIdeas: React.FC = () => {
   );
 };
 
+// --- QuickActions, QuickActionButton components remain the same ---
 const QuickActions: React.FC = () => (
   <View style={styles.quickActionsSection}>
     <Text style={styles.sectionTitle}>Quick Actions</Text>
     <View style={styles.quickActionsGrid}>
-      <QuickActionButton 
+      <QuickActionButton
         icon="time-outline"
         text="Expiring Soon"
         color={theme.colors.primary}
         onPress={() => router.push('/fridge?initialFilter=expiring-soon')}
       />
-      <QuickActionButton 
+      <QuickActionButton
         icon="alert-outline"
         text="Expired Items"
         color={theme.colors.status.error}
         onPress={() => router.push('/fridge?initialFilter=expired')}
       />
     </View>
-    <Pressable 
+    <Pressable
       style={styles.addNewButton}
       onPress={() => router.push('/ingredient')}
     >
@@ -553,13 +447,13 @@ const QuickActions: React.FC = () => (
   </View>
 );
 
-const QuickActionButton: React.FC<QuickActionButtonProps> = ({ 
-  icon, 
-  text, 
-  color, 
-  onPress 
+const QuickActionButton: React.FC<QuickActionButtonProps> = ({
+  icon,
+  text,
+  color,
+  onPress
 }) => (
-  <Pressable 
+  <Pressable
     style={styles.quickActionButton}
     onPress={onPress}
   >
@@ -568,7 +462,29 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
   </Pressable>
 );
 
+
+// --- Styles remain largely the same, adding retry button style ---
 const styles = StyleSheet.create({
+  // ... (Existing styles)
+  recipeImage: { // Added style for image within recipe card
+     width: '100%',
+     height: 120,
+     borderRadius: theme.borderRadius.md, // Match card radius
+     marginVertical: theme.spacing.sm,
+  },
+  retryButton: { // Style for retry/generate buttons in error/empty states
+    marginTop: theme.spacing.lg,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+  },
+  retryButtonText: {
+    color: theme.colors.background.primary,
+    fontSize: theme.fontSize.md,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   debugRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -607,15 +523,21 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.sm,
+    // Add some shadow/elevation if desired
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   expiringIngredients: {
     marginTop: theme.spacing.sm,
     gap: theme.spacing.xs,
   },
   ingredientSectionTitle: {
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.sm, // Slightly smaller title
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: theme.colors.text.secondary, // Muted color
     marginBottom: theme.spacing.xs,
   },
   ingredientBoxes: {
@@ -624,7 +546,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   ingredientBox: {
-    paddingVertical: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs / 2, // Smaller padding
     paddingHorizontal: theme.spacing.sm,
     borderRadius: theme.borderRadius.sm,
     marginBottom: theme.spacing.xs,
@@ -640,11 +562,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 170, 51, 0.1)',
   },
   normalBox: {
-    borderColor: theme.colors.status.success,
+    borderColor: theme.colors.status.success, // Use success color for normal
     backgroundColor: 'rgba(83, 209, 129, 0.1)',
   },
   ingredientText: {
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.xs, // Smaller text
     color: theme.colors.text.primary,
   },
   expiredText: {
@@ -656,16 +578,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   noIngredientsText: {
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.xs, // Smaller text
     color: theme.colors.text.secondary,
     fontStyle: 'italic',
   },
   recipeNavigation: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center', // Center items horizontally
     marginTop: theme.spacing.sm,
     paddingTop: theme.spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth, // Add separator line
+    borderTopColor: theme.colors.border.primary,
   },
   navButton: {
     padding: theme.spacing.sm,
@@ -673,8 +597,10 @@ const styles = StyleSheet.create({
   recipeIndicators: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center', // Align indicators vertically
     gap: 6,
-    flex: 1,
+    flex: 1, // Take remaining space
+    marginHorizontal: theme.spacing.md, // Add some margin around indicators
   },
   indicator: {
     width: 8,
@@ -684,13 +610,13 @@ const styles = StyleSheet.create({
   },
   activeIndicator: {
     backgroundColor: theme.colors.primary,
-    width: 10,
+    width: 10, // Make active indicator slightly larger
     height: 10,
     borderRadius: 5,
   },
   favoriteButton: {
     padding: theme.spacing.sm,
-    marginLeft: theme.spacing.sm,
+    // No extra margin needed if centered
   },
   mobileContainer: {
     padding: theme.spacing.md,
@@ -719,6 +645,7 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.sm,
+    lineHeight: theme.fontSize.md * 1.4, // Improve readability
   },
   statusCount: {
     fontSize: theme.fontSize.xl,
@@ -728,6 +655,7 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.primary,
     marginTop: theme.spacing.sm,
+    fontWeight: '500', // Make link slightly bolder
   },
   recipeHeader: {
     flexDirection: 'row',
@@ -746,31 +674,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   recipeSubtitle: {
-    fontSize: theme.fontSize.lg,
+    fontSize: theme.fontSize.lg, // Slightly larger title
+    fontWeight: '600', // Bolder title
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
   },
-  recipeCount: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.sm,
-  },
   recipeTime: {
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.sm, // Smaller time/difficulty text
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.md,
-  },
-  recipeTags: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  recipeTag: {
-    backgroundColor: theme.colors.background.secondary,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.sm,
-    color: theme.colors.text.primary,
-    fontSize: theme.fontSize.md,
+    marginTop: theme.spacing.xs, // Add space above time
   },
   quickActionsSection: {
     gap: theme.spacing.md,
@@ -812,3 +724,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
   },
 });
+

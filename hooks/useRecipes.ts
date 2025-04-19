@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ingredientDb } from '@/services/database/ingredientDb';
 
 const RECENT_RECIPES_STORAGE_KEY = 'fridgefriend_recent_recipes'; // Standard key
+const MAX_RECENT_RECIPES = 20; // Define max size
 
 export interface RecipePreferences {
   mealType: 'breakfast' | 'lunch-dinner';
@@ -16,6 +17,8 @@ export interface RecipePreferences {
   minimalShopping: boolean;
   vegetarian: boolean;
   healthy: boolean;
+  // Add timestamp for grouping in RecipeList
+  timestamp?: number;
 }
 
 export const useRecipes = () => {
@@ -32,10 +35,15 @@ export const useRecipes = () => {
       try {
         const savedRecipes = await AsyncStorage.getItem(RECENT_RECIPES_STORAGE_KEY);
         if (savedRecipes) {
-          setRecentRecipes(JSON.parse(savedRecipes));
+          const parsedRecipes = JSON.parse(savedRecipes);
+          // Ensure loaded recipes have necessary fields if needed later
+          setRecentRecipes(parsedRecipes);
+          console.log(`Loaded ${parsedRecipes.length} recent recipes.`);
         }
       } catch (err) {
         console.error('Failed to load recent recipes:', err);
+        // Optionally clear corrupted storage
+        // await AsyncStorage.removeItem(RECENT_RECIPES_STORAGE_KEY);
       }
     };
 
@@ -43,135 +51,164 @@ export const useRecipes = () => {
   }, []);
 
   // Update match percentages whenever recipes are displayed
+  // Debounce or optimize this if it causes performance issues
   useEffect(() => {
     const updateMatchPercentages = async () => {
       if (recipes.length > 0) {
+        // console.log('Updating match percentages for generated recipes');
         const updatedRecipes = await RecipeMatcherService.matchRecipes(recipes);
         setRecipes(updatedRecipes);
       }
     };
-
     updateMatchPercentages();
+    // Dependency array includes recipes length to trigger on initial load/generation
   }, [recipes.length]);
 
   // Do the same for recent recipes
   useEffect(() => {
     const updateRecentMatchPercentages = async () => {
       if (recentRecipes.length > 0) {
+        // console.log('Updating match percentages for recent recipes');
         const updatedRecentRecipes = await RecipeMatcherService.matchRecipes(recentRecipes);
         setRecentRecipes(updatedRecentRecipes);
       }
     };
-
     updateRecentMatchPercentages();
+    // Dependency array includes recentRecipes length to trigger when recents change
   }, [recentRecipes.length]);
+
 
   // Save recent recipes whenever they change
   useEffect(() => {
     const saveRecentRecipes = async () => {
       try {
-        console.log('Saving recent recipes to storage:', recentRecipes.length);
-        await AsyncStorage.setItem(RECENT_RECIPES_STORAGE_KEY, JSON.stringify(recentRecipes));
+        // Only save if there are recipes to save, prevents saving empty array unnecessarily on init
+        // Check if recentRecipes actually changed before saving
+        const storedRecents = await AsyncStorage.getItem(RECENT_RECIPES_STORAGE_KEY);
+        const currentRecentsString = JSON.stringify(recentRecipes);
+
+        if (storedRecents !== currentRecentsString) {
+           console.log('Saving recent recipes to storage:', recentRecipes.length);
+           await AsyncStorage.setItem(RECENT_RECIPES_STORAGE_KEY, currentRecentsString);
+        }
       } catch (err) {
         console.error('Failed to save recent recipes:', err);
       }
     };
+    // Call save function, could be debounced if updates are too frequent
+    saveRecentRecipes();
+  }, [recentRecipes]); // Trigger save whenever recentRecipes state changes
 
-    if (recentRecipes.length > 0) {
-      saveRecentRecipes();
-    }
-  }, [recentRecipes]);
-  
+  // Function to add a SINGLE recipe to the recent list
+  const addSingleRecent = useCallback((recipe: Recipe | null) => {
+    if (!recipe) return;
+
+    setRecentRecipes(prevRecent => {
+      console.log('HOOK: Adding single recipe to recents:', recipe.id);
+      // Check if recipe already exists
+      const existingIndex = prevRecent.findIndex(r => r.id === recipe.id);
+
+      let newRecent = [...prevRecent];
+
+      // Remove if exists to move it to the front
+      if (existingIndex !== -1) {
+        newRecent.splice(existingIndex, 1);
+      }
+
+      // Add to front
+      newRecent.unshift(recipe);
+      console.log('HOOK: New recents count after adding single:', newRecent.length);
+
+      // Keep only MAX_RECENT_RECIPES most recent
+      if (newRecent.length > MAX_RECENT_RECIPES) {
+        newRecent = newRecent.slice(0, MAX_RECENT_RECIPES);
+      }
+
+      return newRecent; // The useEffect watching recentRecipes will save this
+    });
+  }, []); // No dependencies needed as it only uses setRecentRecipes
+
   // Function to remove a recipe from recent list
   const removeFromRecent = useCallback((recipeId: string) => {
-    setRecentRecipes(prev => prev.filter(recipe => recipe.id !== recipeId));
+    setRecentRecipes(prev => {
+        const updatedRecents = prev.filter(recipe => recipe.id !== recipeId);
+        console.log(`HOOK: Removed recipe ${recipeId} from recents. New count: ${updatedRecents.length}`);
+        return updatedRecents;
+    });
   }, []);
 
-  // Monitor ingredient database for changes
+  // Monitor ingredient database for changes (Keep existing logic)
   useEffect(() => {
     const checkForIngredientChanges = async () => {
       try {
-        // Get the latest update timestamp from ingredients
         const ingredients = await ingredientDb.getAll();
         if (ingredients.length === 0) return;
-        
-        // Find the most recent update time using dateAdded field since there's no updatedAt
+
         const latestUpdate = Math.max(
           ...ingredients.map(ing => new Date(ing.dateAdded || 0).getTime())
         );
-        
-        // Only log and refresh if there's an actual change
+
         if (latestUpdate > lastIngredientUpdateTime) {
           console.log('Ingredient changes detected!', {
             'latest': new Date(latestUpdate).toISOString(),
             'previous': lastIngredientUpdateTime ? new Date(lastIngredientUpdateTime).toISOString() : 'none'
           });
           setLastIngredientUpdateTime(latestUpdate);
-          refreshRecipes();
+          // Trigger refreshRecipes without logging it as manual
+          refreshRecipes(false);
         }
       } catch (err) {
         console.error('Error checking for ingredient changes:', err);
       }
     };
 
-    // Set up polling interval (every 15 seconds is frequent enough)
     const intervalId = setInterval(checkForIngredientChanges, 15000);
-    
-    // Initial check
-    checkForIngredientChanges();
-    
-    return () => clearInterval(intervalId);
-  }, [lastIngredientUpdateTime, refreshRecipes]);
+    checkForIngredientChanges(); // Initial check
 
-  // Refresh recipe matches every time the screen is focused
+    return () => clearInterval(intervalId);
+  }, [lastIngredientUpdateTime, refreshRecipes]); // Include refreshRecipes
+
+  // Refresh recipe matches every time the screen is focused (Keep existing logic)
   useFocusEffect(
     useCallback(() => {
-      // Don't log this, it happens frequently
-      refreshRecipes();
-    }, [refreshRecipes])
+      // Trigger refreshRecipes without logging it as manual
+      refreshRecipes(false);
+    }, [refreshRecipes]) // Include refreshRecipes
   );
 
-  // Create a function to refresh recipe match percentages
-  const refreshRecipes = useCallback(async () => {
-    // Only log when manually triggered (not during auto-updates)
-    const isManualRefresh = !isRefreshing;
+  // Create a function to refresh recipe match percentages (Keep existing logic)
+  // Add optional parameter to control logging
+  const refreshRecipes = useCallback(async (logAsManual = true) => {
+    const isManualRefresh = logAsManual && !isRefreshing;
     if (isManualRefresh) {
       console.log('🔄 Starting recipe refresh...');
     }
-    
+
     setIsRefreshing(true);
     try {
+      // Refresh generated recipes
       if (recipes.length > 0) {
         if (isManualRefresh) console.log(`Refreshing ${recipes.length} primary recipes`);
         const updatedRecipes = await RecipeMatcherService.refreshRecipeMatches(recipes);
-        
-        // Create a new array to ensure state update triggers a re-render
         setRecipes(prevRecipes => {
-          // For each updated recipe, find and replace the corresponding recipe in the previous state
           const newRecipes = [...prevRecipes];
           updatedRecipes.forEach(updatedRecipe => {
             const index = newRecipes.findIndex(r => r.id === updatedRecipe.id);
-            if (index !== -1) {
-              newRecipes[index] = updatedRecipe;
-            }
+            if (index !== -1) newRecipes[index] = updatedRecipe;
           });
           return newRecipes;
         });
       }
-      
+
+      // Refresh recent recipes
       if (recentRecipes.length > 0) {
         if (isManualRefresh) console.log(`Refreshing ${recentRecipes.length} recent recipes`);
         const updatedRecentRecipes = await RecipeMatcherService.refreshRecipeMatches(recentRecipes);
-        
-        // Create a new array to ensure state update triggers a re-render
         setRecentRecipes(prevRecentRecipes => {
-          // For each updated recipe, find and replace the corresponding recipe in the previous state
           const newRecentRecipes = [...prevRecentRecipes];
           updatedRecentRecipes.forEach(updatedRecipe => {
             const index = newRecentRecipes.findIndex(r => r.id === updatedRecipe.id);
-            if (index !== -1) {
-              newRecentRecipes[index] = updatedRecipe;
-            }
+            if (index !== -1) newRecentRecipes[index] = updatedRecipe;
           });
           return newRecentRecipes;
         });
@@ -182,58 +219,63 @@ export const useRecipes = () => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [recipes, recentRecipes, isRefreshing]);
+  }, [recipes, recentRecipes, isRefreshing]); // Dependencies remain the same
 
+  // Generate recipes and add them to recents immediately
   const generateRecipes = useCallback(async (preferences: RecipePreferences, options?: { accumulate?: boolean }) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Add timestamp to preferences for better organization in RecipeList
       const prefsWithTimestamp = {
         ...preferences,
         timestamp: Date.now(),
       };
-      
+
       const generatedRecipes = await GeminiService.generateRecipes(prefsWithTimestamp);
-      
+
+      // Update the main recipes list
       if (options?.accumulate) {
-        // Add new recipes to the existing ones
         setRecipes(prevRecipes => [...generatedRecipes, ...prevRecipes]);
       } else {
         setRecipes(generatedRecipes);
       }
+
+      // --- Add generated recipes to recents ---
+      if (generatedRecipes.length > 0) {
+        setRecentRecipes(prevRecent => {
+          const recentIds = new Set(prevRecent.map(r => r.id));
+          // Filter out any generated recipes that might already be in recents (unlikely but safe)
+          const newRecipesToAdd = generatedRecipes.filter(recipe => !recentIds.has(recipe.id));
+
+          if (newRecipesToAdd.length === 0) {
+            console.log('HOOK: Generated recipes already in recents.');
+            return prevRecent; // No changes needed
+          }
+
+          console.log(`HOOK: Adding ${newRecipesToAdd.length} newly generated recipes to recents.`);
+          // Add new recipes to the beginning, then the existing ones
+          let combinedRecent = [...newRecipesToAdd, ...prevRecent];
+
+          // Keep the recent list to a reasonable size
+          const trimmedRecent = combinedRecent.slice(0, MAX_RECENT_RECIPES);
+          console.log('HOOK: New recent recipe count after adding generated:', trimmedRecent.length);
+
+          return trimmedRecent; // This triggers the useEffect to save
+        });
+      }
+      // --- End adding to recents ---
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate recipes');
       console.error('Error in generateRecipes:', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, []); // Dependencies: MAX_RECENT_RECIPES is constant, so no dependency needed
 
-  const saveToRecent = useCallback(() => {
-    console.log('saveToRecent called with recipes:', recipes.length);
-    
-    setRecentRecipes(prevRecent => {
-      // Combine current recipes with recent ones, avoiding duplicates by ID
-      const recipeIds = new Set(prevRecent.map(r => r.id));
-      const newRecent = [...prevRecent];
-      
-      recipes.forEach(recipe => {
-        if (!recipeIds.has(recipe.id)) {
-          console.log('Adding to recent:', recipe.id);
-          newRecent.unshift(recipe); // Add to beginning
-          recipeIds.add(recipe.id);
-        }
-      });
-      
-      // Keep the recent list to a reasonable size
-      const trimmedRecent = newRecent.slice(0, 20);
-      console.log('New recent recipe count:', trimmedRecent.length);
-      
-      return trimmedRecent;
-    });
-  }, [recipes]);
+  // REMOVE: saveToRecent function is now integrated into generateRecipes
+  // const saveToRecent = useCallback(() => { ... }, [recipes]);
 
   return {
     recipes,
@@ -242,7 +284,8 @@ export const useRecipes = () => {
     isRefreshing,
     error,
     generateRecipes,
-    saveToRecent,
+    // saveToRecent, // Removed
+    addSingleRecent, // Saves a single viewed recipe
     refreshRecipes,
     removeFromRecent
   };

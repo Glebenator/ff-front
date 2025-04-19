@@ -16,7 +16,8 @@ interface RecipeListProps {
   onFavoriteToggle: (recipe: Recipe) => void;
   isFavorite: (recipeId: string) => boolean;
   mode?: 'default' | 'recent' | 'favorites';
-  onDeleteRecipe?: (recipeId: string) => void;
+  onDeleteRecipe?: (recipe: Recipe) => void; // Pass full recipe for consistency
+  onAddToRecent: (recipe: Recipe) => void; // Add this prop
   // Add an optional sortInfo property
   sortInfo?: {
     type: string;
@@ -32,7 +33,8 @@ export default function RecipeList({
   onFavoriteToggle,
   isFavorite,
   mode = 'default',
-  onDeleteRecipe
+  onDeleteRecipe,
+  onAddToRecent // Destructure the new prop
 }: RecipeListProps) {
   const groupRecipes = () => {
     if (mode === 'recent') {
@@ -40,10 +42,10 @@ export default function RecipeList({
       const groups = {};
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       const lastWeek = new Date(today);
       lastWeek.setDate(lastWeek.getDate() - 7);
 
@@ -67,19 +69,31 @@ export default function RecipeList({
         groups[groupKey].push(recipe);
       });
 
-      return groups;
+      // Sort groups chronologically
+      const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+        const order = ['Today', 'Yesterday', 'Last 7 Days', 'Older'];
+        return order.indexOf(a) - order.indexOf(b);
+      });
+
+      const sortedGroups = {};
+      sortedGroupKeys.forEach(key => {
+        sortedGroups[key] = groups[key];
+      });
+
+      return sortedGroups;
+
     } else {
       // Group by preferences, safely handle JSON parsing
       return recipes.reduce((groups, recipe) => {
         let prefsKey;
         try {
-          prefsKey = recipe.generationPreferences ? 
+          prefsKey = recipe.generationPreferences ?
             JSON.stringify(recipe.generationPreferences) : 'unknown';
         } catch (error) {
           prefsKey = 'unknown';
           console.warn('Failed to stringify preferences:', error);
         }
-        
+
         if (!groups[prefsKey]) {
           groups[prefsKey] = [];
         }
@@ -91,7 +105,7 @@ export default function RecipeList({
 
   const renderPreferences = (prefsString) => {
     if (!prefsString || prefsString === 'unknown') return 'No preferences';
-    
+
     let preferences;
     try {
       preferences = JSON.parse(prefsString);
@@ -126,13 +140,13 @@ export default function RecipeList({
   if (error) {
     return (
       <View style={styles.centerContainer}>
-        <Ionicons 
-          name="alert-circle" 
-          size={48} 
-          color={theme.colors.status.error} 
+        <Ionicons
+          name="alert-circle"
+          size={48}
+          color={theme.colors.status.error}
         />
         <Text style={styles.errorText}>{error}</Text>
-        <Pressable 
+        <Pressable
           style={styles.retryButton}
           onPress={onRetry}
         >
@@ -142,13 +156,13 @@ export default function RecipeList({
     );
   }
 
-  if (recipes.length === 0) {
+  if (recipes.length === 0 && mode === 'default') { // Only show this empty state for default mode
     return (
       <View style={styles.centerContainer}>
-        <Ionicons 
-          name="restaurant" 
-          size={48} 
-          color={theme.colors.text.secondary} 
+        <Ionicons
+          name="restaurant"
+          size={48}
+          color={theme.colors.text.secondary}
         />
         <Text style={styles.emptyText}>
           Generate your first recipes by selecting your preferences above
@@ -163,14 +177,15 @@ export default function RecipeList({
     <View>
       {Object.entries(groupedRecipes).map(([groupKey, groupRecipes]) => (
         <View key={groupKey} style={[styles.recipeGroup, mode === 'recent' && styles.recentRecipeGroup]}>
-          <Text style={[
-            styles.groupHeader,
-            mode === 'recent' && styles.dateHeader
-          ]}>
-            {mode === 'recent' ? groupKey : renderPreferences(groupKey)}
-          </Text>
+          {mode !== 'favorites' && ( // Don't show header for favorites tab
+            <Text style={[
+              styles.groupHeader,
+              mode === 'recent' && styles.dateHeader
+            ]}>
+              {mode === 'recent' ? groupKey : renderPreferences(groupKey)}
+            </Text>
+          )}
           {(groupRecipes as Recipe[]).map((recipe: Recipe) => {
-            // Use CompactRecipeCard for recent view, or regular RecipeCard for other views
             return mode === 'recent' ? (
               <CompactRecipeCard
                 key={recipe.id}
@@ -178,22 +193,8 @@ export default function RecipeList({
                 onFavoriteToggle={onFavoriteToggle}
                 isFavorite={isFavorite(recipe.id)}
                 allowDelete={true}
-                onDelete={onDeleteRecipe ? 
-                  () => {
-                    Alert.alert(
-                      'Remove Recipe',
-                      `Are you sure you want to remove "${recipe.title}" from your recent recipes?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { 
-                          text: 'Remove', 
-                          onPress: () => onDeleteRecipe(recipe.id),
-                          style: 'destructive' 
-                        },
-                      ]
-                    );
-                  } : undefined
-                }
+                onDelete={onDeleteRecipe ? () => onDeleteRecipe(recipe) : undefined} // Pass full recipe
+                onAddToRecent={onAddToRecent} // Pass down
               />
             ) : (
               <RecipeCard
@@ -203,22 +204,8 @@ export default function RecipeList({
                 isFavorite={isFavorite(recipe.id)}
                 compact={false}
                 allowDelete={mode === 'favorites'}
-                onDelete={onDeleteRecipe ? 
-                  () => {
-                    Alert.alert(
-                      'Remove Recipe',
-                      `Are you sure you want to remove "${recipe.title}" from your favorites?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { 
-                          text: 'Remove', 
-                          onPress: () => onDeleteRecipe(recipe.id),
-                          style: 'destructive' 
-                        },
-                      ]
-                    );
-                  } : undefined
-                }
+                onDelete={onDeleteRecipe ? () => onDeleteRecipe(recipe) : undefined} // Pass full recipe
+                onAddToRecent={onAddToRecent} // Pass down
               />
             );
           })}

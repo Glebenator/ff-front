@@ -12,20 +12,22 @@ interface CompactRecipeCardProps {
   isFavorite: boolean;
   allowDelete?: boolean;
   onDelete?: () => void;
+  onAddToRecent: (recipe: Recipe) => void; // Add this prop
 }
 
-export default function CompactRecipeCard({ 
-  recipe, 
+export default function CompactRecipeCard({
+  recipe,
   onFavoriteToggle,
   isFavorite,
   allowDelete = false,
-  onDelete
+  onDelete,
+  onAddToRecent // Destructure the new prop
 }: CompactRecipeCardProps) {
   const [showDetail, setShowDetail] = useState(false);
 
   return (
     <>
-      <Pressable 
+      <Pressable
         style={({ pressed }) => [
           styles.card,
           pressed && styles.cardPressed
@@ -33,46 +35,46 @@ export default function CompactRecipeCard({
         onPress={() => setShowDetail(true)}
       >
         {/* Left side: Image */}
-        <Image 
+        <Image
           source={{ uri: recipe.imageUrl }}
           style={styles.image}
           resizeMode="cover"
         />
-        
+
         {/* Middle: Recipe info */}
         <View style={styles.content}>
           <Text style={styles.title} numberOfLines={1}>
             {recipe.title}
           </Text>
-          
+
           {/* Recipe brief metrics */}
           <View style={styles.metricsRow}>
             <View style={styles.metricItem}>
               <Ionicons name="time-outline" size={14} color={theme.colors.primary} />
               <Text style={styles.metricText}>{recipe.cookingTime}</Text>
             </View>
-            
+
             <View style={styles.metricSeparator} />
-            
+
             <View style={styles.metricItem}>
               <Ionicons name="restaurant-outline" size={14} color={theme.colors.primary} />
               <Text style={styles.metricText}>{recipe.difficulty}</Text>
             </View>
           </View>
-          
+
           {/* Ingredient count */}
           <View style={styles.ingredientCounts}>
             <Text style={styles.countText}>
-              <Text style={styles.countHighlight}>{recipe.matchingIngredients.length}</Text> available, 
+              <Text style={styles.countHighlight}>{recipe.matchingIngredients.length}</Text> available,
               <Text style={[styles.countHighlight, styles.missingText]}> {recipe.missingIngredients.length}</Text> needed
             </Text>
           </View>
         </View>
-        
+
         {/* Right side: Actions */}
         <View style={styles.actionsContainer}>
           {allowDelete && onDelete && (
-            <Pressable 
+            <Pressable
               style={styles.actionButton}
               onPress={(e) => {
                 e.stopPropagation();
@@ -80,15 +82,15 @@ export default function CompactRecipeCard({
               }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons 
-                name="trash-outline" 
-                size={20} 
-                color={theme.colors.status.error} 
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color={theme.colors.status.error}
               />
             </Pressable>
           )}
-          
-          <Pressable 
+
+          <Pressable
             style={styles.actionButton}
             onPress={(e) => {
               e.stopPropagation();
@@ -96,17 +98,17 @@ export default function CompactRecipeCard({
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons 
-              name={isFavorite ? "heart" : "heart-outline"} 
-              size={20} 
-              color={isFavorite ? theme.colors.status.error : theme.colors.text.secondary} 
+            <Ionicons
+              name={isFavorite ? "heart" : "heart-outline"}
+              size={20}
+              color={isFavorite ? theme.colors.status.error : theme.colors.text.secondary}
             />
           </Pressable>
-          
-          <Ionicons 
-            name="chevron-forward" 
-            size={20} 
-            color={theme.colors.text.secondary} 
+
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={theme.colors.text.secondary}
             style={styles.chevron}
           />
         </View>
@@ -115,7 +117,11 @@ export default function CompactRecipeCard({
       <RecipeDetailModal
         recipe={recipe}
         visible={showDetail}
-        onClose={() => setShowDetail(false)}
+        onClose={() => {
+          setShowDetail(false);
+          onAddToRecent(recipe); // Call hook function on close
+          console.log('CompactRecipeCard: Adding to recent on modal close:', recipe.id);
+        }}
         onFavoriteToggle={() => onFavoriteToggle(recipe)}
         isFavorite={isFavorite}
       />

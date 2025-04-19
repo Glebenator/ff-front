@@ -14,15 +14,17 @@ interface RecipeCardProps {
   compact?: boolean;
   allowDelete?: boolean;
   onDelete?: () => void;
+  onAddToRecent: (recipe: Recipe) => void; // Add this prop
 }
 
-export default function RecipeCard({ 
-  recipe, 
+export default function RecipeCard({
+  recipe,
   onFavoriteToggle,
   isFavorite,
   compact = false,
   allowDelete = false,
-  onDelete
+  onDelete,
+  onAddToRecent // Destructure the new prop
 }: RecipeCardProps) {
   const [showDetail, setShowDetail] = useState(false);
 
@@ -32,12 +34,12 @@ export default function RecipeCard({
     if (percentage >= 50) return theme.colors.primary;
     return theme.colors.status.warning;
   };
-  
+
   // Calculate actual match percentage dynamically (in case it's not already calculated)
-  const matchPercentage = recipe.matchPercentage ?? 
-    (recipe.matchingIngredients.length / 
+  const matchPercentage = recipe.matchPercentage ??
+    (recipe.matchingIngredients.length /
       (recipe.matchingIngredients.length + recipe.missingIngredients.length) * 100);
-  
+
   // New ingredient badge component
   const IngredientBadge = ({ count, type }: { count: number, type: 'matching' | 'missing' }) => {
     const isMatching = type === 'matching';
@@ -46,10 +48,10 @@ export default function RecipeCard({
         styles.badge,
         { backgroundColor: isMatching ? 'rgba(99, 207, 139, 0.2)' : 'rgba(255, 170, 51, 0.2)' }
       ]}>
-        <Ionicons 
-          name={isMatching ? "checkmark-circle" : "alert-circle"} 
-          size={16} 
-          color={isMatching ? theme.colors.status.success : theme.colors.status.warning} 
+        <Ionicons
+          name={isMatching ? "checkmark-circle" : "alert-circle"}
+          size={16}
+          color={isMatching ? theme.colors.status.success : theme.colors.status.warning}
         />
         <Text style={[
           styles.badgeText,
@@ -63,7 +65,7 @@ export default function RecipeCard({
 
   return (
     <>
-      <Pressable 
+      <Pressable
         style={({ pressed }) => [
           styles.card,
           compact && styles.cardCompact,
@@ -73,12 +75,12 @@ export default function RecipeCard({
       >
         {/* Card Header with Image and Match Percentage */}
         <View style={styles.cardHeader}>
-          <Image 
+          <Image
             source={{ uri: recipe.imageUrl }}
             style={styles.image}
             resizeMode="cover"
           />
-          
+
           {!compact && (
             <View style={styles.matchBadge}>
               <Text style={[styles.matchText, { color: getMatchColor(matchPercentage) }]}>
@@ -86,43 +88,43 @@ export default function RecipeCard({
               </Text>
             </View>
           )}
-          
+
           {/* Favorite Button */}
           <View style={styles.cardActions}>
             {/* Delete Button - only shown when allowDelete is true */}
             {allowDelete && onDelete && (
-              <Pressable 
+              <Pressable
                 style={styles.actionButton}
                 onPress={(e) => {
                   e.stopPropagation();
                   onDelete();
                 }}
               >
-                <Ionicons 
-                  name="trash-outline" 
-                  size={22} 
-                  color={theme.colors.status.error} 
+                <Ionicons
+                  name="trash-outline"
+                  size={22}
+                  color={theme.colors.status.error}
                 />
               </Pressable>
             )}
-            
+
             {/* Favorite Button */}
-            <Pressable 
+            <Pressable
               style={styles.actionButton}
               onPress={(e) => {
                 e.stopPropagation();
                 onFavoriteToggle(recipe);
               }}
             >
-              <Ionicons 
-                name={isFavorite ? "heart" : "heart-outline"} 
-                size={24} 
-                color={isFavorite ? theme.colors.status.error : theme.colors.text.secondary} 
+              <Ionicons
+                name={isFavorite ? "heart" : "heart-outline"}
+                size={24}
+                color={isFavorite ? theme.colors.status.error : theme.colors.text.secondary}
               />
             </Pressable>
           </View>
         </View>
-        
+
         {/* Card Content */}
         <View style={styles.content}>
           <Text style={styles.title} numberOfLines={compact ? 1 : 2}>
@@ -135,22 +137,22 @@ export default function RecipeCard({
               <Ionicons name="time-outline" size={16} color={theme.colors.primary} />
               <Text style={styles.metricText}>{recipe.cookingTime}</Text>
             </View>
-            
+
             <View style={styles.metricSeparator} />
-            
+
             <View style={styles.metricItem}>
               <Ionicons name="restaurant-outline" size={16} color={theme.colors.primary} />
               <Text style={styles.metricText}>{recipe.difficulty}</Text>
             </View>
-            
+
             <View style={styles.metricSeparator} />
-            
+
             <View style={styles.metricItem}>
               <Ionicons name="flame-outline" size={16} color={theme.colors.primary} />
               <Text style={styles.metricText}>{recipe.calories}</Text>
             </View>
           </View>
-          
+
           {!compact && (
             <View style={styles.ingredients}>
               <IngredientBadge count={recipe.matchingIngredients.length} type="matching" />
@@ -158,7 +160,7 @@ export default function RecipeCard({
             </View>
           )}
         </View>
-        
+
         {/* View Details Button */}
         <View style={styles.viewDetailsButton}>
           <Text style={styles.viewDetailsText}>View Details</Text>
@@ -169,7 +171,11 @@ export default function RecipeCard({
       <RecipeDetailModal
         recipe={recipe}
         visible={showDetail}
-        onClose={() => setShowDetail(false)}
+        onClose={() => {
+          setShowDetail(false);
+          onAddToRecent(recipe); // Call hook function on close
+          console.log('RecipeCard: Adding to recent on modal close:', recipe.id);
+        }}
         onFavoriteToggle={() => onFavoriteToggle(recipe)}
         isFavorite={isFavorite}
       />
