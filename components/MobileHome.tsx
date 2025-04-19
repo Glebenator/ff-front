@@ -145,12 +145,6 @@ const RecipeIdeas: React.FC = () => {
     router.push('/debug');
   };
 
-  // REMOVE: useEffect for checking storage keys directly
-  // useEffect(() => {
-  //   const checkStorageKeys = async () => { ... };
-  //   checkStorageKeys();
-  // }, []);
-
   // Get meal type based on current time of day
   const getMealTypeForCurrentTime = () => {
     const hour = new Date().getHours();
@@ -168,11 +162,6 @@ const RecipeIdeas: React.FC = () => {
       const mealType = getMealTypeForCurrentTime();
       console.log(`Generating ${mealType} recipes for RecipeIdeas`);
 
-      // Use the hook's generateRecipes function
-      // We need to adapt this slightly as the hook manages its own state
-      // Option 1: Let the hook manage the state (preferred if RecipeIdeas doesn't need its own copy)
-      // Option 2: Fetch and set local state (as currently implemented)
-      // Let's stick with Option 2 for now to minimize changes, but be aware of potential duplication
       const fetchedRecipes = await GeminiService.generateRecipes({
         quickMeals: true,
         mealType: mealType === 'breakfast' ? 'breakfast' : 'lunch-dinner'
@@ -181,9 +170,6 @@ const RecipeIdeas: React.FC = () => {
       if (fetchedRecipes && fetchedRecipes.length > 0) {
         setRecipes(fetchedRecipes);
         setCurrentRecipeIndex(0);
-        // Optionally, save these generated recipes to recents immediately using the hook
-        // This depends on whether `saveToRecent` in the hook should handle this list
-        // For now, let's rely on viewing/closing modal to add to recents
       } else {
         setRecipes([]);
       }
@@ -194,19 +180,12 @@ const RecipeIdeas: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // Removed generateRecipesFromHook dependency as we call GeminiService directly here
+  }, []);
 
   // Fetch recipes when the component is first mounted
   useEffect(() => {
     fetchRecipes();
-    // REMOVE: AsyncStorage.setItem('last_recipe_generated_time', ...); // If not needed elsewhere
   }, [fetchRecipes]);
-
-  // REMOVE: Direct addToRecent function
-  // const addToRecent = useCallback((recipe: Recipe) => { ... });
-
-  // REMOVE: Direct addToFavorites function
-  // const addToFavorites = useCallback((recipe: Recipe) => { ... });
 
   // Add currently displayed recipe to recents whenever it changes using the hook
   useEffect(() => {
@@ -214,7 +193,6 @@ const RecipeIdeas: React.FC = () => {
       console.log('HOOK: Adding current recipe to recents via useEffect:', currentRecipe.id);
       addSingleRecent(currentRecipe); // Use the hook function
     }
-    // Add addSingleRecent to dependencies if it's not stable (it should be stable due to useCallback)
   }, [currentRecipeIndex, currentRecipe, addSingleRecent]);
 
   // Navigation functions remain the same
@@ -227,6 +205,14 @@ const RecipeIdeas: React.FC = () => {
      if (recipes.length === 0) return;
      setCurrentRecipeIndex((prevIndex) => (prevIndex - 1 + recipes.length) % recipes.length);
   };
+
+  // Handle favorite toggle with current recipe
+  const handleFavoriteToggle = useCallback(() => {
+    if (currentRecipe) {
+      console.log('MobileHome: Toggling favorite for recipe:', currentRecipe.id);
+      toggleFavorite(currentRecipe);
+    }
+  }, [currentRecipe, toggleFavorite]);
 
   // Loading/Error/Empty states remain the same
   if (loading) {
@@ -241,7 +227,6 @@ const RecipeIdeas: React.FC = () => {
     return (
       <View style={styles.card}>
         <Text style={styles.cardText}>{error}</Text>
-        {/* Optionally add a retry button */}
         <Pressable onPress={fetchRecipes} style={styles.retryButton}>
            <Text style={styles.retryButtonText}>Retry</Text>
         </Pressable>
@@ -252,7 +237,6 @@ const RecipeIdeas: React.FC = () => {
     return (
       <View style={styles.card}>
         <Text style={styles.cardText}>No recipe ideas found.</Text>
-         {/* Optionally add a button to generate */}
          <Pressable onPress={fetchRecipes} style={styles.retryButton}>
            <Text style={styles.retryButtonText}>Generate Recipes</Text>
         </Pressable>
@@ -263,7 +247,6 @@ const RecipeIdeas: React.FC = () => {
   return (
     <>
       <View style={styles.card}>
-        {/* Debug Row and Recipe Header remain the same */}
         <View style={styles.debugRow}>
           <Text style={styles.debugText} onPress={goToDebugScreen}>Debug</Text>
         </View>
@@ -275,7 +258,6 @@ const RecipeIdeas: React.FC = () => {
           <Text style={styles.viewAllText} onPress={() => router.push('/recipes')}>View All</Text>
         </View>
 
-        {/* Recipe Card Pressable */}
         {currentRecipe && (
           <Pressable
             style={({ pressed }) => [
@@ -283,12 +265,9 @@ const RecipeIdeas: React.FC = () => {
               pressed && styles.cardPressed
             ]}
             onPress={() => {
-                // Add to recent when opening detail view (optional, already added on index change)
-                // addSingleRecent(currentRecipe);
                 setShowRecipeDetail(true);
             }}
           >
-            {/* Recipe Card Content remains the same */}
             <Text style={styles.recipeSubtitle}>{currentRecipe.title}</Text>
             <Text style={styles.cardText} numberOfLines={2}>{currentRecipe.description}</Text>
             {currentRecipe.imageUrl && (
@@ -299,7 +278,6 @@ const RecipeIdeas: React.FC = () => {
               {' '}{currentRecipe.cookingTime} • {currentRecipe.difficulty}
             </Text>
 
-            {/* Expiring Ingredients display remains the same */}
             {currentRecipe.ingredientMatches && (
               <View style={styles.expiringIngredients}>
                 <Text style={styles.ingredientSectionTitle}>Ingredients to use:</Text>
@@ -337,7 +315,6 @@ const RecipeIdeas: React.FC = () => {
               </View>
             )}
 
-            {/* View Details Button remains the same */}
             <View style={styles.viewDetailsButton}>
               <Text style={styles.viewDetailsText}>View Recipe Details</Text>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
@@ -345,9 +322,7 @@ const RecipeIdeas: React.FC = () => {
           </Pressable>
         )}
 
-        {/* Recipe navigation controls */}
         <View style={styles.recipeNavigation}>
-          {/* Previous Button */}
           <Pressable
             style={styles.navButton}
             onPress={previousRecipe}
@@ -356,7 +331,6 @@ const RecipeIdeas: React.FC = () => {
             <Ionicons name="chevron-back" size={24} color={recipes.length <= 1 ? theme.colors.border.primary : theme.colors.primary} />
           </Pressable>
 
-          {/* Indicators */}
           <View style={styles.recipeIndicators}>
             {recipes.map((_, index) => (
               <View
@@ -369,7 +343,6 @@ const RecipeIdeas: React.FC = () => {
             ))}
           </View>
 
-          {/* Next Button */}
           <Pressable
             style={styles.navButton}
             onPress={nextRecipe}
@@ -378,14 +351,9 @@ const RecipeIdeas: React.FC = () => {
             <Ionicons name="chevron-forward" size={24} color={recipes.length <= 1 ? theme.colors.border.primary : theme.colors.primary} />
           </Pressable>
 
-          {/* Favorite button - ONLY call the hook function */}
           <Pressable
             style={styles.favoriteButton}
-            onPress={() => {
-              if (currentRecipe) {
-                toggleFavorite(currentRecipe); // Use the hook function ONLY
-              }
-            }}
+            onPress={handleFavoriteToggle}
             disabled={!currentRecipe}
           >
             <Ionicons
@@ -397,21 +365,16 @@ const RecipeIdeas: React.FC = () => {
         </View>
       </View>
 
-      {/* Recipe Detail Modal */}
       {currentRecipe && (
         <RecipeDetailModal
           recipe={currentRecipe}
           visible={showRecipeDetail}
           onClose={() => {
             setShowRecipeDetail(false);
-            // When closing detail view, add to recents using the hook
             console.log('HOOK: Adding recipe to recents on modal close:', currentRecipe.id);
-            addSingleRecent(currentRecipe); // Use the hook function
+            addSingleRecent(currentRecipe);
           }}
-          onFavoriteToggle={() => {
-            // Toggle favorite using the hook function ONLY
-            toggleFavorite(currentRecipe);
-          }}
+          onFavoriteToggle={handleFavoriteToggle}
           isFavorite={isFavorite(currentRecipe.id)}
         />
       )}

@@ -1,7 +1,6 @@
 // /home/coolcake/myworkspace/fridgefriend/ff/app/(tabs)/recipes.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, ScrollView, Text, StyleSheet, RefreshControl, Pressable, Alert } from 'react-native'; // Added Alert
-// REMOVE: import AsyncStorage from '@react-native-async-storage/async-storage'; // No longer needed here
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { sharedStyles } from '@/styles/sharedStyles';
@@ -17,6 +16,7 @@ import AnimatedTabNavigation from '@/components/recipes/AnimatedTabNavigation';
 export default function RecipeScreen() {
   // Tab state
   const [activeTab, setActiveTab] = useState<'suggested' | 'favorites' | 'recent'>('suggested');
+  const [previousTab, setPreviousTab] = useState<'suggested' | 'favorites' | 'recent'>('suggested');
 
   // Sorting state
   const [sortOrder, setSortOrder] = useState<RecipeSortType>('name-asc');
@@ -41,16 +41,27 @@ export default function RecipeScreen() {
     isRefreshing,
     error,
     generateRecipes,
-    // saveToRecent, // We might not need this directly if generateRecipes handles it
     refreshRecipes,
     removeFromRecent,
-    addSingleRecent // Use the hook's function to add recents
+    addSingleRecent
   } = useRecipes();
 
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
 
-  // REMOVE: Incorrect direct AsyncStorage manipulation
-  // const addRecipeToRecents = useCallback((recipe) => { ... });
+  // Track tab changes to trigger refreshes
+  useEffect(() => {
+    if (activeTab !== previousTab) {
+      // Tab has changed, refresh data for the new active tab
+      console.log(`Tab changed from ${previousTab} to ${activeTab} - refreshing data`);
+
+      if (activeTab === 'favorites' || activeTab === 'recent') {
+        // Refresh the data for favorites or recent tabs
+        refreshRecipes(false); // Pass false to not log as manual refresh
+      }
+
+      setPreviousTab(activeTab);
+    }
+  }, [activeTab, previousTab, refreshRecipes]);
 
   // Handlers
   const handlePreferenceSelect = useCallback((key: keyof Omit<RecipePreferences, 'mealType'>) => {
@@ -70,8 +81,6 @@ export default function RecipeScreen() {
   const handleGenerate = useCallback(async () => {
     try {
       await generateRecipes(preferences, { accumulate: true });
-      // Optionally switch to suggested tab after generating
-      // setActiveTab('suggested');
     } catch (err) {
       console.error('Failed to generate recipes:', err);
     }
@@ -153,13 +162,6 @@ export default function RecipeScreen() {
           (a.matchingIngredients.length + a.missingIngredients.length)
         );
         break;
-      // Add cases for match percentage if needed
-      // case 'match-percentage-desc':
-      //   sortedRecipes.sort((a, b) => (b.matchPercentage ?? 0) - (a.matchPercentage ?? 0));
-      //   break;
-      // case 'match-percentage-asc':
-      //   sortedRecipes.sort((a, b) => (a.matchPercentage ?? 0) - (b.matchPercentage ?? 0));
-      //   break;
     }
 
     return sortedRecipes;
@@ -367,19 +369,10 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     textAlign: 'center',
   },
-  // sortContainer: { // Removed as SortButton is now in header
-  //   flexDirection: 'row',
-  //   justifyContent: 'flex-end',
-  //   paddingHorizontal: theme.spacing.md,
-  //   marginTop: theme.spacing.xs,
-  //   marginBottom: -theme.spacing.xs,
-  //   zIndex: 1,
-  // },
   debugText: {
     marginTop: theme.spacing.sm,
     fontSize: theme.fontSize.sm,
     color: 'gray',
     fontFamily: 'monospace',
   },
-
 });

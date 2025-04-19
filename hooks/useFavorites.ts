@@ -27,6 +27,21 @@ export const useFavorites = () => {
     loadFavorites();
   }, []);
 
+  // Save favorites to storage whenever the favorites state changes
+  useEffect(() => {
+    const saveFavoritesToStorage = async () => {
+      if (isLoading) return; // Skip saving during initial load
+      try {
+        console.log('Saving favorites from useEffect:', favorites.length);
+        await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
+      } catch (error) {
+        console.error('Error saving favorites from useEffect:', error);
+      }
+    };
+
+    saveFavoritesToStorage();
+  }, [favorites, isLoading]);
+
   // Save favorites to storage
   const saveFavorites = async (newFavorites: Recipe[]) => {
     try {
@@ -50,7 +65,7 @@ export const useFavorites = () => {
       console.log(`${isFavorited ? 'Removing from' : 'Adding to'} favorites: ${recipe.id}`);
       console.log('New favorites count:', newFavorites.length);
       
-      saveFavorites(newFavorites);
+      // We no longer need to call saveFavorites here as it will be handled by the useEffect
       return newFavorites;
     });
   }, []);
