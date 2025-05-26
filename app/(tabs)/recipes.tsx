@@ -6,7 +6,8 @@ import { useRecipes } from '@/hooks/useRecipes';
 import { useFavorites } from '@/hooks/useFavorites';
 import RecipeList from '@/components/recipes/RecipeList';
 import { type RecipePreferences } from '@/hooks/useRecipes';
-import TabNavigation from '@/components/recipes/TabNavigation';
+import SharedTabNavigation from '@/components/shared/TabNavigation';
+import { TAB_VARIANTS, TAB_ICONS } from '@/config/tabStyles';
 import PreferencesSection from '@/components/recipes/PreferencesSection';
 
 export default function RecipeScreen() {
@@ -77,9 +78,15 @@ export default function RecipeScreen() {
 
   return (
     <View style={styles.container}>
-      <TabNavigation 
+      <SharedTabNavigation 
+        tabs={[
+          { id: 'suggested', label: 'Suggested', icon: TAB_ICONS.suggested as any },
+          { id: 'favorites', label: 'Favorites', icon: TAB_ICONS.favorites as any },
+          { id: 'recent', label: 'Recent', icon: TAB_ICONS.recent as any }
+        ]}
         activeTab={activeTab} 
-        onChangeTab={setActiveTab} 
+        onChangeTab={(tab) => setActiveTab(tab as 'suggested' | 'favorites' | 'recent')} 
+        variant={TAB_VARIANTS.recipes}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>

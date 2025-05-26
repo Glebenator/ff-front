@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Pressable, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import { useSessions } from '@/hooks/useSessions';
 import { sessionManager, type EditableFridgeItem } from '@/services/sessionManager';
 import { toastStore } from '@/services/toastStore';
 import SessionItemEditor from '@/components/sessions/SessionItemEditor';
 import { 
-  FilterHeader, 
   SessionCard, 
   EmptyState, 
   type SessionStatus 
 } from '@/components/sessions';
+import SharedTabNavigation from '@/components/shared/TabNavigation';
+import { TAB_VARIANTS, TAB_ICONS } from '@/config/tabStyles';
 
 export default function SessionsScreen() {
   const {
@@ -105,12 +107,34 @@ export default function SessionsScreen() {
 
   return (
     <View style={styles.container}>
-      <FilterHeader 
-        activeFilter={activeFilter}
-        setActiveFilter={setActiveFilter}
-        onClear={() => handleClearSessions(activeFilter)}
-        hasItems={filteredSessions.length > 0}
-      />
+      <View style={styles.filterHeader}>
+        <SharedTabNavigation
+          tabs={[
+            { id: 'pending', label: 'Pending', icon: TAB_ICONS.pending as any },
+            { id: 'approved', label: 'Approved', icon: TAB_ICONS.approved as any },
+            { id: 'rejected', label: 'Rejected', icon: TAB_ICONS.rejected as any }
+          ]}
+          activeTab={activeFilter}
+          onChangeTab={(tab) => setActiveFilter(tab as SessionStatus)}
+          variant={TAB_VARIANTS.sessions}
+        />
+        
+        {filteredSessions.length > 0 && (
+          <Pressable
+            style={styles.clearButton}
+            onPress={() => handleClearSessions(activeFilter)}
+          >
+            <Ionicons 
+              name="trash-outline" 
+              size={18} 
+              color={theme.colors.status.error} 
+            />
+            <Text style={styles.clearButtonText}>
+              Clear {activeFilter}
+            </Text>
+          </Pressable>
+        )}
+      </View>
 
       {filteredSessions.length === 0 ? (
         <EmptyState status={activeFilter} />
@@ -160,5 +184,24 @@ const styles = StyleSheet.create({
   sessionsList: {
     flex: 1,
     padding: theme.spacing.md,
+  },
+  filterHeader: {
+    paddingBottom: theme.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.primary,
+    gap: theme.spacing.md,
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: theme.spacing.xs,
+    padding: theme.spacing.sm,
+    marginRight: theme.spacing.md,
+  },
+  clearButtonText: {
+    color: theme.colors.status.error,
+    fontSize: theme.fontSize.sm,
+    fontWeight: '500',
   },
 });

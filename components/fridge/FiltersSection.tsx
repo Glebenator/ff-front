@@ -3,7 +3,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/styles/theme';
 import SearchBar from '@/components/SearchBar';
-import ExpiryFilters from './ExpiryFilters';
+import SharedTabNavigation from '@/components/shared/TabNavigation';
+import { TAB_VARIANTS, TAB_ICONS } from '@/config/tabStyles';
 import CategoryFilters from './CategoryFilters';
 import { type FilterType, type SortType } from '@/types/types';
 
@@ -100,7 +101,18 @@ export default function FiltersSection({
       <Animated.View style={{ height: heightInterpolate, overflow: 'hidden' }}>
         <>
           {/* Expiry Date Filters */}
-          <ExpiryFilters filter={filter} setFilter={setFilter} />
+          <View style={styles.expiryFilterContainer}>
+            <SharedTabNavigation
+              tabs={[
+                { id: 'all', label: 'All Items', icon: TAB_ICONS.all as any },
+                { id: 'expiring-soon', label: 'Expiring Soon', icon: TAB_ICONS['expiring-soon'] as any },
+                { id: 'expired', label: 'Expired', icon: TAB_ICONS.expired as any }
+              ]}
+              activeTab={filter}
+              onChangeTab={(tab) => setFilter(tab as FilterType)}
+              variant={TAB_VARIANTS.fridge}
+            />
+          </View>
 
           <View style={styles.filterSeparator} />
 
@@ -148,5 +160,8 @@ const styles = StyleSheet.create({
   },
   searchBarContainer: {
     marginVertical: theme.spacing.xs,
+  },
+  expiryFilterContainer: {
+    paddingVertical: theme.spacing.sm,
   },
 });
