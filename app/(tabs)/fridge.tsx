@@ -33,6 +33,15 @@ export default function FridgeScreen() {
         }, [initialFilter])
     );
 
+    const getDaysUntilExpiry = (expiryDate: string) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expiry = new Date(expiryDate);
+        expiry.setHours(0, 0, 0, 0);
+        const diffTime = expiry.getTime() - today.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
     const loadIngredients = useCallback(() => {
         if (Platform.OS === 'web') {
             setIsLoading(false);
@@ -52,10 +61,7 @@ export default function FridgeScreen() {
                     break;
                 case 'expired':
                     data = ingredientDb.getAll().filter((ingredient: Ingredient) => {
-                        const expiryDate: Date = new Date(ingredient.expiryDate);
-                        const today: Date = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return expiryDate < today;
+                        return getDaysUntilExpiry(ingredient.expiryDate) < 0;
                     });
                     break;
             }
@@ -74,15 +80,6 @@ export default function FridgeScreen() {
             loadIngredients();
         }, [loadIngredients])
     );
-
-    const getDaysUntilExpiry = (expiryDate: string) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const expiry = new Date(expiryDate);
-        expiry.setHours(0, 0, 0, 0);
-        const diffTime = expiry.getTime() - today.getTime();
-        return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    };
 
     const getCategories = useCallback(() => {
         const categories = new Set<string>();
@@ -106,16 +103,12 @@ export default function FridgeScreen() {
             const matchesCategory = selectedCategory === 'all' || ingredient.category === selectedCategory;
 
             // Apply filter based on expiry status
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const expiryDate = new Date(ingredient.expiryDate);
-
             switch (filter) {
                 case 'expiring-soon':
                     const daysUntilExpiry = getDaysUntilExpiry(ingredient.expiryDate)
                     return matchesSearch && matchesCategory && daysUntilExpiry <= 5 && daysUntilExpiry >= 0;
                 case 'expired':
-                    return matchesSearch && matchesCategory && expiryDate < today;
+                    return matchesSearch && matchesCategory && getDaysUntilExpiry(ingredient.expiryDate) < 0;
                 case 'all':
                 default:
                     return matchesSearch && matchesCategory;
